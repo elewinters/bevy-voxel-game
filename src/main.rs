@@ -41,17 +41,25 @@ fn spawn_map(
 
     // spawn a plane of cubes in 3 dimensions
 
-    for x in 0..50 {
-        for y in 0..5 {
-            for z in 0..50 {
-                commands.spawn((
-                    Transform::from_xyz(x as f32, y as f32, z as f32),
+    let size_x = 32;
+    let size_y = 5;
+    let size_z = 32;
 
-                    Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-                    Collider::cuboid(0.5, 0.5, 0.5),
+    for x in 0..size_x {
+        for y in 0..size_y {
+            for z in 0..size_x {
+                if x == 0 || x == size_x - 1 ||
+                   y == 0 || y == size_y - 1 ||
+                   z == 0 || z == size_z - 1 {
+                    commands.spawn((
+                        Transform::from_xyz(x as f32, y as f32, z as f32),
 
-                    MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-                ));
+                        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+                        Collider::cuboid(0.5, 0.5, 0.5),
+
+                        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                    ));
+                }
             }
         }
     }
