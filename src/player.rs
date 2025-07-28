@@ -75,8 +75,6 @@ pub fn spawn_player(mut commands: Commands) {
 fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut movement: ResMut<MovementInput>,
-    mut look: ResMut<LookInput>,
-    mut mouse_events: EventReader<MouseMotion>,
 ) {
     if keyboard.pressed(KeyCode::KeyW) {
         movement.z -= 1.0;
@@ -96,12 +94,6 @@ fn handle_input(
     }
     if keyboard.pressed(KeyCode::Space) {
         movement.y = 1.0;
-    }
-
-    for event in mouse_events.read() {
-        look.x -= event.delta.x * MOUSE_SENSITIVITY;
-        look.y -= event.delta.y * MOUSE_SENSITIVITY;
-        look.y = look.y.clamp(-89.9, 89.9); // Limit pitch
     }
 }
 
@@ -147,8 +139,16 @@ fn player_movement(
 fn player_look(
     mut player_transform: Single<&mut Transform, (With<Player>, Without<Camera>)>,
     mut camera_transform: Single<&mut Transform, With<Camera>>,
-    input: Res<LookInput>,
+    mut mouse_events: EventReader<MouseMotion>,
+
+    mut look: Local<Vec2>
 ) {
-    player_transform.rotation = Quat::from_axis_angle(Vec3::Y, input.x.to_radians());
-    camera_transform.rotation = Quat::from_axis_angle(Vec3::X, input.y.to_radians());
+    for event in mouse_events.read() {
+        look.x -= event.delta.x * MOUSE_SENSITIVITY;
+        look.y -= event.delta.y * MOUSE_SENSITIVITY;
+        look.y = look.y.clamp(-89.9, 89.9); // Limit pitch
+    }
+
+    player_transform.rotation = Quat::from_axis_angle(Vec3::Y, look.x.to_radians());
+    camera_transform.rotation = Quat::from_axis_angle(Vec3::X, look.y.to_radians());
 }
