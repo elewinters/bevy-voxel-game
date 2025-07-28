@@ -33,11 +33,6 @@ pub fn spawn_player(mut commands: Commands) {
 
         KinematicCharacterController {
             custom_mass: Some(5.0),
-            autostep: Some(CharacterAutostep {
-                max_height: CharacterLength::Relative(0.3),
-                min_width: CharacterLength::Relative(0.5),
-                include_dynamic_bodies: false,
-            }),
             
             max_slope_climb_angle: 45.0_f32.to_radians(), // don't allow climbing slopes larger than 45 degrees
             min_slope_slide_angle: 30.0_f32.to_radians(), // automatically slide down on slopes smaller than 30 degrees
