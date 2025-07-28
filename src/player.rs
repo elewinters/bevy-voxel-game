@@ -58,12 +58,13 @@ pub fn spawn_player(mut commands: Commands) {
 
 fn player_movement(
     time: Res<Time>,
-
     keyboard: Res<ButtonInput<KeyCode>>,
     
     player_transform: Single<&Transform, With<Player>>,
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
     controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
+
+    mut vertical_movement: Local<f32>,
 ) {
     let mut input = Vec3::default();
 
@@ -83,12 +84,19 @@ fn player_movement(
         input.y += JUMP_POWER;
     }
 
-    if let Some(x) = controller_output && !x.grounded {
-        if input.y != JUMP_POWER {
-            input.y = GRAVITY;
+    // gravity stuff
+
+    if let Some(x) = controller_output && x.grounded {
+        *vertical_movement = 0.0;
+        if input.y > 0.0 {
+            *vertical_movement = input.y;
         }
     }
 
+    input.y = *vertical_movement;
+    *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
+
+    // this is where we actually move the player
     // we use the player's rotation so that we move in the direction that we're facing
     controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
 }
