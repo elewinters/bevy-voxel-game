@@ -51,16 +51,16 @@ fn spawn_map(
     for x in 0..size_x {
         for y in 0..size_y {
             for z in 0..size_x {
-                let flatness = 20.0; // the higher the number, the less hills there are
-                let spikiness = 10.0; // the higher the number, the spikier hills get
+                let flatness = 60.0; // the higher the number, the less hills there are
+                let spikiness = 20.0; // the higher the number, the spikier hills get
 
-                let noise_y = noise.get([x as f64 / flatness , y as f64 / flatness , z as f64 / flatness]) as f32 * spikiness;               
+                let noise_y = noise.get([x as f64 / flatness , y as f64 / flatness , z as f64 / flatness]) as f32 * spikiness;           
 
                 if x == 0 || x == size_x - 1 ||
                    y == 0 || y == size_y - 1 ||
                    z == 0 || z == size_z - 1 {
                     commands.spawn((
-                        Transform::from_xyz(x as f32, noise_y, z as f32),
+                        Transform::from_xyz(x as f32, noise_y.round(), z as f32),
 
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         Collider::cuboid(0.5, 0.5, 0.5),
