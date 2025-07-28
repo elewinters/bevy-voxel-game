@@ -9,8 +9,8 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, spawn_player);
 
         app.add_systems(Update, (
-            player_look,
-            player_movement,
+            look_player,
+            move_player,
         ));
     }
 }
@@ -51,7 +51,7 @@ pub fn spawn_player(mut commands: Commands) {
     ));
 }
 
-fn player_movement(
+fn move_player(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     
@@ -98,7 +98,7 @@ fn player_movement(
     controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
 }
 
-fn player_look(
+fn look_player(
     mut player_transform: Single<&mut Transform, (With<Player>, Without<Camera>)>,
     mut camera_transform: Single<&mut Transform, With<Camera>>,
     mut mouse_events: EventReader<MouseMotion>,
