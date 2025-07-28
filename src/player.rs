@@ -16,7 +16,6 @@ impl Plugin for PlayerPlugin {
 }
 
 const MOUSE_SENSITIVITY: f32 = 0.3;
-const GROUND_TIMER: f32 = 0.5;
 const MOVEMENT_SPEED: f32 = 8.0;
 const JUMP_POWER: f32 = 20.0;
 const GRAVITY: f32 = -9.81;
@@ -64,10 +63,6 @@ fn player_movement(
     
     player_transform: Single<&Transform, With<Player>>,
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
-    controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
-
-    mut vertical_movement: Local<f32>,
-    mut grounded_timer: Local<f32>,
 ) {
     let mut input = Vec3::default();
 
@@ -87,23 +82,7 @@ fn player_movement(
         input.y = JUMP_POWER;
     }
 
-    // Check physics ground check
-    if let Some(x) = controller_output && x.grounded {
-        *grounded_timer = GROUND_TIMER;
-        *vertical_movement = 0.0;
-    }
-        
-    // If we are grounded we can jump
-    if *grounded_timer > 0.0 {
-        *grounded_timer -= time.delta_secs();
-        // If we jump we clear the grounded tolerance
-        if input.y > 0.0 {
-            *vertical_movement = input.y;
-            *grounded_timer = 0.0;
-        }
-    }
-    input.y = *vertical_movement;
-    *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.unwrap_or(1.0);
+    // we use the player's rotation so that we move in the direction that we're facing
     controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
 }
 
