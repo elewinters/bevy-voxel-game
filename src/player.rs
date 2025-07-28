@@ -25,16 +25,21 @@ const MOVEMENT_SPEED: f32 = 8.0;
 const JUMP_SPEED: f32 = 20.0;
 const GRAVITY: f32 = -9.81;
 
-/// Keyboard input vector
+// Keyboard input vector
 #[derive(Default, Resource, Deref, DerefMut)]
 struct MovementInput(Vec3);
 
-/// Mouse input vector
+// Mouse input vector
 #[derive(Default, Resource, Deref, DerefMut)]
 struct LookInput(Vec2);
 
+#[derive(Component)]
+struct Player;
+
 pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
+        Player,
+
         Transform::from_xyz(0.0, 5.0, 0.0),
         Visibility::default(),
         Collider::round_cylinder(0.9, 0.3, 0.2),
@@ -140,16 +145,10 @@ fn player_movement(
 }
 
 fn player_look(
-    mut player: Query<&mut Transform, (With<KinematicCharacterController>, Without<Camera>)>,
-    mut camera: Query<&mut Transform, With<Camera>>,
+    mut player_transform: Single<&mut Transform, (With<Player>, Without<Camera>)>,
+    mut camera_transform: Single<&mut Transform, With<Camera>>,
     input: Res<LookInput>,
 ) {
-    let Ok(mut transform) = player.single_mut() else {
-        return;
-    };
-    transform.rotation = Quat::from_axis_angle(Vec3::Y, input.x.to_radians());
-    let Ok(mut transform) = camera.single_mut() else {
-        return;
-    };
-    transform.rotation = Quat::from_axis_angle(Vec3::X, input.y.to_radians());
+    player_transform.rotation = Quat::from_axis_angle(Vec3::Y, input.x.to_radians());
+    camera_transform.rotation = Quat::from_axis_angle(Vec3::X, input.y.to_radians());
 }
