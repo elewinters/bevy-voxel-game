@@ -15,7 +15,6 @@ impl Plugin for PlayerPlugin {
         ));
 
         app.init_resource::<MovementInput>();
-        app.init_resource::<LookInput>();
     }
 }
 
@@ -28,10 +27,6 @@ const GRAVITY: f32 = -9.81;
 // Keyboard input vector
 #[derive(Default, Resource, Deref, DerefMut)]
 struct MovementInput(Vec3);
-
-// Mouse input vector
-#[derive(Default, Resource, Deref, DerefMut)]
-struct LookInput(Vec2);
 
 #[derive(Component)]
 struct Player;
