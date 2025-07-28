@@ -9,24 +9,17 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, spawn_player);
 
         app.add_systems(Update, (
-            handle_input,
             player_look,
             player_movement
         ));
-
-        app.init_resource::<MovementInput>();
     }
 }
 
 const MOUSE_SENSITIVITY: f32 = 0.3;
 const GROUND_TIMER: f32 = 0.5;
 const MOVEMENT_SPEED: f32 = 8.0;
-const JUMP_SPEED: f32 = 20.0;
+const JUMP_POWER: f32 = 20.0;
 const GRAVITY: f32 = -9.81;
-
-// Keyboard input vector
-#[derive(Default, Resource, Deref, DerefMut)]
-struct MovementInput(Vec3);
 
 #[derive(Component)]
 struct Player;
@@ -64,34 +57,10 @@ pub fn spawn_player(mut commands: Commands) {
     ));
 }
 
-fn handle_input(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut movement: ResMut<MovementInput>,
-) {
-    if keyboard.pressed(KeyCode::KeyW) {
-        movement.z -= 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyS) {
-        movement.z += 1.0
-    }
-    if keyboard.pressed(KeyCode::KeyA) {
-        movement.x -= 1.0;
-    }
-    if keyboard.pressed(KeyCode::KeyD) {
-        movement.x += 1.0
-    }
-    **movement = movement.normalize_or_zero();
-    if keyboard.pressed(KeyCode::ShiftLeft) {
-        **movement *= 2.0;
-    }
-    if keyboard.pressed(KeyCode::Space) {
-        movement.y = 1.0;
-    }
-}
-
 fn player_movement(
     time: Res<Time>,
-    mut input: ResMut<MovementInput>,
+
+    keyboard: Res<ButtonInput<KeyCode>>,
     
     player_transform: Single<&Transform, With<Player>>,
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
@@ -100,11 +69,24 @@ fn player_movement(
     mut vertical_movement: Local<f32>,
     mut grounded_timer: Local<f32>,
 ) {
-    // Retrieve input
-    let mut movement = Vec3::new(input.x, 0.0, input.z) * MOVEMENT_SPEED;
-    let jump_speed = input.y * JUMP_SPEED;
-    // Clear input
-    **input = Vec3::ZERO;
+    let mut input = Vec3::default();
+
+    if keyboard.pressed(KeyCode::KeyW) {
+        input.z -= MOVEMENT_SPEED;
+    }
+    if keyboard.pressed(KeyCode::KeyS) {
+        input.z += MOVEMENT_SPEED;
+    }
+    if keyboard.pressed(KeyCode::KeyA) {
+        input.x -= MOVEMENT_SPEED;
+    }
+    if keyboard.pressed(KeyCode::KeyD) {
+        input.x += MOVEMENT_SPEED;
+    }
+    if keyboard.pressed(KeyCode::Space) {
+        input.y = JUMP_POWER;
+    }
+
     // Check physics ground check
     if controller_output.map(|o| o.grounded).unwrap_or(false) {
         *grounded_timer = GROUND_TIMER;
@@ -114,14 +96,14 @@ fn player_movement(
     if *grounded_timer > 0.0 {
         *grounded_timer -= time.delta_secs();
         // If we jump we clear the grounded tolerance
-        if jump_speed > 0.0 {
-            *vertical_movement = jump_speed;
+        if input.y > 0.0 {
+            *vertical_movement = input.y;
             *grounded_timer = 0.0;
         }
     }
-    movement.y = *vertical_movement;
+    input.y = *vertical_movement;
     *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.unwrap_or(1.0);
-    controller.translation = Some(player_transform.rotation * (movement * time.delta_secs()));
+    controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
 }
 
 fn player_look(
