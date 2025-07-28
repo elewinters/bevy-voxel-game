@@ -35,18 +35,14 @@ fn spawn_map(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // ground
-    //commands.spawn((
-    //    Transform::from_xyz(0.0, -0.1, 0.0),
-    //    Collider::cuboid(50.0, 0.1, 50.0),
-    //));
-
-    // spawn a plane of cubes in 3 dimensions
     let noise = Perlin::new(512);
 
     let size_x = 32 * 3;
     let size_y = 12;
     let size_z = 32 * 3;
+
+    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let material = materials.add(Color::from(LAWN_GREEN));
 
     for x in 0..size_x {
         for y in 0..size_y {
@@ -61,11 +57,10 @@ fn spawn_map(
                    z == 0 || z == size_z - 1 {
                     commands.spawn((
                         Transform::from_xyz(x as f32, noise_y.round(), z as f32),
-
-                        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         Collider::cuboid(0.5, 0.5, 0.5),
 
-                        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                        Mesh3d(mesh.clone()),
+                        MeshMaterial3d(material.clone()),
                     ));
                 }
             }
