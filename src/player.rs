@@ -38,25 +38,24 @@ pub fn spawn_player(mut commands: Commands) {
         Transform::from_xyz(0.0, 5.0, 0.0),
         Visibility::default(),
         Collider::round_cylinder(0.9, 0.3, 0.2),
+
         KinematicCharacterController {
             custom_mass: Some(5.0),
-            up: Vec3::Y,
-            offset: CharacterLength::Absolute(0.01),
-            slide: true,
             autostep: Some(CharacterAutostep {
                 max_height: CharacterLength::Relative(0.3),
                 min_width: CharacterLength::Relative(0.5),
                 include_dynamic_bodies: false,
             }),
-            // Don’t allow climbing slopes larger than 45 degrees.
-            max_slope_climb_angle: 45.0_f32.to_radians(),
-            // Automatically slide down on slopes smaller than 30 degrees.
-            min_slope_slide_angle: 30.0_f32.to_radians(),
-            apply_impulse_to_dynamic_bodies: true,
+            
+            max_slope_climb_angle: 45.0_f32.to_radians(), // don't allow climbing slopes larger than 45 degrees
+            min_slope_slide_angle: 30.0_f32.to_radians(), // automatically slide down on slopes smaller than 30 degrees
+
             snap_to_ground: None,
+
             ..default()
         },
 
+        // camera
         children![
             (
                 Camera3d::default(), 
