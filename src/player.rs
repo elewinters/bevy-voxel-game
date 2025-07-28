@@ -92,31 +92,27 @@ fn handle_input(
 fn player_movement(
     time: Res<Time>,
     mut input: ResMut<MovementInput>,
-    mut player: Query<(
-        &mut Transform,
-        &mut KinematicCharacterController,
-        Option<&KinematicCharacterControllerOutput>,
-    )>,
+    
+    player_transform: Single<&Transform, With<Player>>,
+    mut controller: Single<&mut KinematicCharacterController, With<Player>>,
+    controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
+
     mut vertical_movement: Local<f32>,
     mut grounded_timer: Local<f32>,
 ) {
-    let Ok((transform, mut controller, output)) = player.single_mut() else {
-        return;
-    };
-    let delta_time = time.delta_secs();
     // Retrieve input
     let mut movement = Vec3::new(input.x, 0.0, input.z) * MOVEMENT_SPEED;
     let jump_speed = input.y * JUMP_SPEED;
     // Clear input
     **input = Vec3::ZERO;
     // Check physics ground check
-    if output.map(|o| o.grounded).unwrap_or(false) {
+    if controller_output.map(|o| o.grounded).unwrap_or(false) {
         *grounded_timer = GROUND_TIMER;
         *vertical_movement = 0.0;
     }
     // If we are grounded we can jump
     if *grounded_timer > 0.0 {
-        *grounded_timer -= delta_time;
+        *grounded_timer -= time.delta_secs();
         // If we jump we clear the grounded tolerance
         if jump_speed > 0.0 {
             *vertical_movement = jump_speed;
@@ -124,8 +120,8 @@ fn player_movement(
         }
     }
     movement.y = *vertical_movement;
-    *vertical_movement += GRAVITY * delta_time * controller.custom_mass.unwrap_or(1.0);
-    controller.translation = Some(transform.rotation * (movement * delta_time));
+    *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.unwrap_or(1.0);
+    controller.translation = Some(player_transform.rotation * (movement * time.delta_secs()));
 }
 
 fn player_look(
