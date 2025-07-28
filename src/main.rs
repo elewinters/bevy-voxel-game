@@ -8,14 +8,13 @@ mod player;
 /* ------------------ */
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::srgb(1.0, 1.0, 1.0))) /* white skybox */
-        
         .add_plugins((
             DefaultPlugins,
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
         ))
         .add_plugins(player::PlayerPlugin)
+
         .add_systems(Startup, spawn_map)
         .run();
 }
