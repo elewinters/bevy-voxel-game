@@ -9,8 +9,8 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, spawn_player);
 
         app.add_systems(Update, (
-            look_player,
             move_player,
+            look_player,
         ));
     }
 }
