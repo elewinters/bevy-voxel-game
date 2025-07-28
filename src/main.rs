@@ -39,13 +39,20 @@ fn spawn_map(
         Collider::cuboid(50.0, 0.1, 50.0),
     ));
 
-    // cube
-    commands.spawn((
-        Transform::from_xyz(0.0, 0.5, 0.0),
+    // spawn a plane of cubes in 3 dimensions
 
-        Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
-        Collider::cuboid(0.5, 0.5, 0.5),
+    for x in 0..50 {
+        for y in 0..5 {
+            for z in 0..50 {
+                commands.spawn((
+                    Transform::from_xyz(x as f32, y as f32, z as f32),
 
-        MeshMaterial3d(materials.add(Color::from(GREEN))),
-    ));
+                    Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
+                    Collider::cuboid(0.5, 0.5, 0.5),
+
+                    MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                ));
+            }
+        }
+    }
 }
