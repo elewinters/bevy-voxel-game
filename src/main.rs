@@ -3,6 +3,9 @@ use bevy_rapier3d::{control::KinematicCharacterController, prelude::*};
 
 mod player;
 
+/* ------------------ */
+/*      functions     */
+/* ------------------ */
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(1.0, 1.0, 1.0))) /* white skybox */
@@ -13,11 +16,14 @@ fn main() {
             RapierDebugRenderPlugin::default(),
         ))
         .add_plugins(player::PlayerPlugin)
-        .add_systems(Startup, setup_map)
+        .add_systems(Startup, spawn_map)
         .run();
 }
 
-fn setup_map(mut commands: Commands) {
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+fn spawn_map(mut commands: Commands) {
     // ground
     let ground_size = 50.0;
     let ground_height = 0.1;

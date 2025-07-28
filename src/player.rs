@@ -15,14 +15,23 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+/* ------------------ */
+/*      constants     */
+/* ------------------ */
 const MOUSE_SENSITIVITY: f32 = 0.3;
 const MOVEMENT_SPEED: f32 = 8.0;
 const JUMP_POWER: f32 = 20.0;
 const GRAVITY: f32 = -9.81;
 
+/* ------------------- */
+/*      components     */
+/* ------------------- */
 #[derive(Component)]
 struct Player;
 
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
 pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
         Player,
@@ -51,6 +60,7 @@ pub fn spawn_player(mut commands: Commands) {
     ));
 }
 
+// responsible for moving around with WASD, jumping and applying gravity
 fn move_player(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -98,6 +108,7 @@ fn move_player(
     controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
 }
 
+// responsible for changing the player/camera's rotation based on mouse input, aka "looking"
 fn look_player(
     mut player_transform: Single<&mut Transform, (With<Player>, Without<Camera>)>,
     mut camera_transform: Single<&mut Transform, With<Camera>>,
