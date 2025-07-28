@@ -10,7 +10,7 @@ impl Plugin for PlayerPlugin {
 
         app.add_systems(Update, (
             player_look,
-            player_movement
+            player_movement,
         ));
     }
 }
@@ -63,6 +63,7 @@ fn player_movement(
     
     player_transform: Single<&Transform, With<Player>>,
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
+    controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
 ) {
     let mut input = Vec3::default();
 
@@ -79,7 +80,13 @@ fn player_movement(
         input.x += MOVEMENT_SPEED;
     }
     if keyboard.pressed(KeyCode::Space) {
-        input.y = JUMP_POWER;
+        input.y += JUMP_POWER;
+    }
+
+    if let Some(x) = controller_output && !x.grounded {
+        if input.y != JUMP_POWER {
+            input.y = GRAVITY;
+        }
     }
 
     // we use the player's rotation so that we move in the direction that we're facing
