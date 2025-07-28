@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::{control::KinematicCharacterController, prelude::*};
 
 mod player;
+mod window;
 
 /* ------------------ */
 /*      functions     */
@@ -13,7 +14,10 @@ fn main() {
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
         ))
-        .add_plugins(player::PlayerPlugin)
+        .add_plugins((
+            player::PlayerPlugin,
+            window::WindowPlugin
+        ))
 
         .add_systems(Startup, spawn_map)
         .run();
