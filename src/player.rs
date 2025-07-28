@@ -83,6 +83,8 @@ fn player_movement(
 
     if let Some(x) = controller_output && x.grounded {
         *vertical_movement = 0.0;
+
+        // if we're jumping
         if input.y > 0.0 {
             *vertical_movement = input.y;
         }
