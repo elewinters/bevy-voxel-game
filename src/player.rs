@@ -88,10 +88,11 @@ fn player_movement(
     }
 
     // Check physics ground check
-    if controller_output.map(|o| o.grounded).unwrap_or(false) {
+    if let Some(x) = controller_output && x.grounded {
         *grounded_timer = GROUND_TIMER;
         *vertical_movement = 0.0;
     }
+        
     // If we are grounded we can jump
     if *grounded_timer > 0.0 {
         *grounded_timer -= time.delta_secs();
