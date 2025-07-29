@@ -3,6 +3,8 @@ use bevy::input::mouse::MouseMotion;
 use bevy::render::camera::Exposure;
 use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 
+use bevy_rapier3d::control::KinematicCharacterController;
+
 use crate::*;
 
 pub struct PlayerPlugin;
