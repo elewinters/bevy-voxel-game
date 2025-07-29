@@ -9,7 +9,10 @@ use crate::player;
 pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (spawn_chunk, spawn_atmosphere));
+        app.add_systems(Startup, spawn_atmosphere);
+        app.add_systems(Startup, spawn_chunk.after(player::spawn_player));
+
+        app.add_systems(Update, spawn_chunk_on_key_press);
     }
 }
 
@@ -49,23 +52,37 @@ fn spawn_chunk(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+
+    player_transform: Single<&Transform, With<player::Player>>
 ) {
-    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let material = materials.add(Color::from(LAWN_GREEN));
+    let player_x = player_transform.translation.x;
+    let player_z = player_transform.translation.z;
 
     let mut chunk = commands.spawn((
         Chunk,
-        Transform::from_xyz(0.0, 0.0, 0.0)
+        Transform::from_xyz(player_x, 0.0, player_z)
     ));
 
-    for x in 0..CHUNK_SIZE_X * RENDER_DISTANCE {
+    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let material = materials.add(Color::from(LAWN_GREEN));
+
+    for x in 0..CHUNK_SIZE_X {
         for y in 0..CHUNK_SIZE_Y {
-            for z in 0..CHUNK_SIZE_Z * RENDER_DISTANCE {
+            for z in 0..CHUNK_SIZE_Z {
                 if x == 0 || x == CHUNK_SIZE_X - 1 ||
                    y == 0 || y == CHUNK_SIZE_Y - 1 ||
                    z == 0 || z == CHUNK_SIZE_Z - 1 {
+                    // spawn a cube as a child of the chunk
                     chunk.with_child((
-                        Transform::from_xyz(x as f32, generate_noise(x as f64, y as f64, z as f64), z as f32),
+                        Transform::from_xyz(
+                            x as f32, 
+                            generate_noise(
+                                x as f64 + player_x as f64, 
+                                y as f64, 
+                                z as f64 + player_z as f64
+                            ), 
+                            z as f32
+                        ),
                         Collider::cuboid(0.5, 0.5, 0.5),
 
                         Mesh3d(mesh.clone()),
@@ -74,6 +91,15 @@ fn spawn_chunk(
                 }
             }
         }
+    }
+}
+
+fn spawn_chunk_on_key_press(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>
+) {
+    if keys.just_pressed(KeyCode::KeyP) {
+        commands.run_system_cached(spawn_chunk);
     }
 }
 
