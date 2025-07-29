@@ -31,7 +31,7 @@ const GRAVITY: f32 = -9.81;
 /*      components     */
 /* ------------------- */
 #[derive(Component)]
-struct Player;
+pub struct Player;
 
 /* ---------------- */
 /*      systems     */
@@ -40,7 +40,7 @@ pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
         Player,
 
-        Transform::from_xyz(0.0, 5.0, 0.0),
+        Transform::from_xyz(0.0, 20.0, 0.0),
         Visibility::default(),
         Collider::round_cylinder(0.9, 0.3, 0.2),
 

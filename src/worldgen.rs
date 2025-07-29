@@ -2,21 +2,35 @@ use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
 use bevy_rapier3d::prelude::*;
-
 use noise::*;
+
+use crate::player;
 
 pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (spawn_terrain, spawn_atmosphere));
+        app.add_systems(Startup, (spawn_chunk, spawn_atmosphere));
     }
 }
 
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
+const RENDER_DISTANCE: u8 = 3;
+
+const CHUNK_SIZE_X: u8 = 32;
+const CHUNK_SIZE_Y: u8 = 12;
+const CHUNK_SIZE_Z: u8 = 32;
+
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
+
+/* ------------------- */
+/*      components     */
+/* ------------------- */
+#[derive(Component)]
+#[require(Transform, Visibility)]
+struct Chunk;
 
 /* ------------------ */
 /*      functions     */
@@ -31,25 +45,26 @@ fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
-fn spawn_terrain(
+fn spawn_chunk(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let size_x = 32 * 3;
-    let size_y = 12;
-    let size_z = 32 * 3;
-
     let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let material = materials.add(Color::from(LAWN_GREEN));
 
-    for x in 0..size_x {
-        for y in 0..size_y {
-            for z in 0..size_x {
-                if x == 0 || x == size_x - 1 ||
-                   y == 0 || y == size_y - 1 ||
-                   z == 0 || z == size_z - 1 {
-                    commands.spawn((
+    let mut chunk = commands.spawn((
+        Chunk,
+        Transform::from_xyz(0.0, 0.0, 0.0)
+    ));
+
+    for x in 0..CHUNK_SIZE_X * RENDER_DISTANCE {
+        for y in 0..CHUNK_SIZE_Y {
+            for z in 0..CHUNK_SIZE_Z * RENDER_DISTANCE {
+                if x == 0 || x == CHUNK_SIZE_X - 1 ||
+                   y == 0 || y == CHUNK_SIZE_Y - 1 ||
+                   z == 0 || z == CHUNK_SIZE_Z - 1 {
+                    chunk.with_child((
                         Transform::from_xyz(x as f32, generate_noise(x as f64, y as f64, z as f64), z as f32),
                         Collider::cuboid(0.5, 0.5, 0.5),
 
