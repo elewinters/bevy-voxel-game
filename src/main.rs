@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
+use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
 
 use bevy_rapier3d::{control::KinematicCharacterController, prelude::*};
 
@@ -17,6 +20,17 @@ fn main() {
             DefaultPlugins,
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
+            FpsOverlayPlugin {
+                config: FpsOverlayConfig {
+                    text_config: TextFont {
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    text_color: Color::from(YELLOW),
+                    refresh_interval: Duration::from_millis(250),
+                    enabled: true,
+                },
+            }
         ))
         .add_plugins((
             player::PlayerPlugin,
