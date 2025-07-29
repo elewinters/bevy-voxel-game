@@ -4,7 +4,7 @@ use bevy::color::palettes::css::*;
 use bevy_rapier3d::prelude::*;
 
 use bevy::render::{
-    mesh::{Indices, VertexAttributeValues},
+    mesh::Indices,
     render_asset::RenderAssetUsages,
     render_resource::PrimitiveTopology,
 };
@@ -16,6 +16,16 @@ impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, (spawn_terrain, spawn_atmosphere));
     }
+}
+
+#[derive(Debug)]
+enum BlockFace {
+    Top,
+    Bottom,
+    Right,
+    Left,
+    Back,
+    Forward
 }
 
 /* ------------------ */
@@ -34,11 +44,10 @@ fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
     noise_y.round() as f32
 }
 
-fn create_cube_mesh() -> Mesh {
-    // Keep the mesh data accessible in future frames to be able to mutate it in toggle_texture.
-    Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD)
+fn create_cube_mesh<const N: usize>(without_faces: [BlockFace; N]) -> Mesh {
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD);
 
-    .with_inserted_attribute(
+    mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
         // Each array is an [x, y, z] coordinate in local space.
         // The camera coordinate space is right-handed x-right, y-up, z-back. This means "forward" is -Z.
@@ -76,8 +85,9 @@ fn create_cube_mesh() -> Mesh {
             [0.5, 0.5, -0.5],
             [0.5, -0.5, -0.5],
         ],
-    )
-    .with_inserted_attribute(
+    );
+
+    mesh.insert_attribute(
         Mesh::ATTRIBUTE_UV_0,
         vec![
             // Assigning the UV coords for the top side.
@@ -93,9 +103,9 @@ fn create_cube_mesh() -> Mesh {
             // Assigning the UV coords for the forward side.
             [0.0, 0.45], [0.0, 0.2], [1.0, 0.2], [1.0, 0.45],
         ],
-    )
+    );
 
-    .with_inserted_attribute(
+    mesh.insert_attribute(
         Mesh::ATTRIBUTE_NORMAL,
         vec![
             // Normals for the top side (towards +y)
@@ -129,16 +139,18 @@ fn create_cube_mesh() -> Mesh {
             [0.0, 0.0, -1.0],
             [0.0, 0.0, -1.0],
         ],
-    )
+    );
 
-    .with_inserted_indices(Indices::U32(vec![
+    mesh.insert_indices(Indices::U32(vec![
         0,3,1 , 1,3,2, // triangles making up the top (+y) facing side.
         4,5,7 , 5,6,7, // bottom (-y)
         8,11,9 , 9,11,10, // right (+x)
         12,13,15 , 13,14,15, // left (-x)
         16,19,17 , 17,19,18, // back (+z)
         20,21,23 , 21,22,23, // forward (-z)
-    ]))
+    ]));
+
+    mesh
 }
 
 
@@ -154,7 +166,7 @@ fn spawn_terrain(
     let size_y = 12;
     let size_z = 32 * 3;
 
-    let mesh = meshes.add(create_cube_mesh());
+    let mesh = meshes.add(create_cube_mesh([]));
     let material = materials.add(Color::from(LAWN_GREEN));
 
     for x in 0..size_x {
@@ -179,7 +191,7 @@ fn spawn_terrain(
         Transform::from_xyz(50.0, 8.0, 50.0),
         Collider::cuboid(0.5, 0.5, 0.5),
 
-        Mesh3d(meshes.add(create_cube_mesh())),
+        Mesh3d(meshes.add(create_cube_mesh([BlockFace::Top]))),
         MeshMaterial3d(materials.add(Color::from(HOT_PINK))),
     ));
 }
