@@ -13,6 +13,7 @@ impl Plugin for WorldGenPlugin {
         app.add_systems(Startup, spawn_chunk.after(player::spawn_player));
 
         app.add_systems(Update, spawn_chunk_on_key_press);
+        app.add_systems(Update, print_current_chunk);
     }
 }
 
@@ -77,6 +78,7 @@ fn spawn_chunk(
 
             let mut chunk = commands.spawn((
                 Chunk,
+                Name::new(format!("CHUNK: {chunk_x}, {chunk_z}")),
                 Transform::from_xyz(
                     chunk_position_x,
                     0.0,
@@ -120,6 +122,31 @@ fn spawn_chunk_on_key_press(
 ) {
     if keys.just_pressed(KeyCode::KeyP) {
         commands.run_system_cached(spawn_chunk);
+    }
+}
+
+fn print_current_chunk(
+    chunk_query: Query<(&Name, &Transform), With<Chunk>>,
+    player_transform: Single<&Transform, With<player::Player>>
+) {
+    let player_pos = player_transform.translation;
+    
+    for (chunk_name, chunk_transform) in chunk_query {
+        let chunk_pos = chunk_transform.translation;
+        
+        // calculate chunk boundaries
+        let chunk_min_x = chunk_pos.x;
+        let chunk_max_x = chunk_pos.x + CHUNK_SIZE_X as f32;
+        let chunk_min_z = chunk_pos.z;
+        let chunk_max_z = chunk_pos.z + CHUNK_SIZE_Z as f32;
+        
+        // check if player is within chunk bounds
+        if player_pos.x >= chunk_min_x 
+            && player_pos.x < chunk_max_x
+            && player_pos.z >= chunk_min_z 
+            && player_pos.z < chunk_max_z {
+            println!("player is in chunk: {}", chunk_name);
+        }
     }
 }
 
