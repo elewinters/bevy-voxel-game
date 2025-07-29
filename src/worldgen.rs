@@ -28,6 +28,12 @@ const CHUNK_SIZE_Z: u32 = 32;
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
 
+const CHUNKS: [[bool; 3]; 3] = [
+    [true, true, true],
+    [true, true, true],
+    [true, true, true]
+];
+
 /* ------------------- */
 /*      components     */
 /* ------------------- */
@@ -58,36 +64,47 @@ fn spawn_chunk(
     let player_x = player_transform.translation.x;
     let player_z = player_transform.translation.z;
 
-    let mut chunk = commands.spawn((
-        Chunk,
-        Transform::from_xyz(player_x, 0.0, player_z)
-    ));
-
     let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let material = materials.add(Color::from(LAWN_GREEN));
 
-    for x in 0..CHUNK_SIZE_X {
-        for y in 0..CHUNK_SIZE_Y {
-            for z in 0..CHUNK_SIZE_Z {
-                if x == 0 || x == CHUNK_SIZE_X - 1 ||
-                   y == 0 || y == CHUNK_SIZE_Y - 1 ||
-                   z == 0 || z == CHUNK_SIZE_Z - 1 {
-                    // spawn a cube as a child of the chunk
-                    chunk.with_child((
-                        Transform::from_xyz(
-                            x as f32, 
-                            generate_noise(
-                                x as f64 + player_x as f64, 
-                                y as f64, 
-                                z as f64 + player_z as f64
-                            ), 
-                            z as f32
-                        ),
-                        Collider::cuboid(0.5, 0.5, 0.5),
+    // this makes it so that this spawns chunks around the player (so we spawn in the center) rather than the player getting spawned on the bottom left corner of the chunk
+    let start_offset = -((RENDER_DISTANCE as f32) / 2.0);
 
-                        Mesh3d(mesh.clone()),
-                        MeshMaterial3d(material.clone()),
-                    ));
+    for chunk_x in 0..RENDER_DISTANCE {
+        for chunk_z in 0..RENDER_DISTANCE {
+            let mut chunk = commands.spawn((
+                Chunk,
+                Transform::from_xyz(
+                    player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32)),
+                    0.0,
+                    player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32))
+                )
+            ));
+
+            for x in 0..CHUNK_SIZE_X {
+                for y in 0..CHUNK_SIZE_Y {
+                    for z in 0..CHUNK_SIZE_Z {
+                        if x == 0 || x == CHUNK_SIZE_X - 1 ||
+                        y == 0 || y == CHUNK_SIZE_Y - 1 ||
+                        z == 0 || z == CHUNK_SIZE_Z - 1 {
+                            // spawn a cube as a child of the chunk
+                            chunk.with_child((
+                                Transform::from_xyz(
+                                    x as f32, 
+                                    generate_noise(
+                                        x as f64 + player_x as f64, 
+                                        y as f64, 
+                                        z as f64 + player_z as f64
+                                    ), 
+                                    z as f32
+                                ),
+                                Collider::cuboid(0.5, 0.5, 0.5),
+
+                                Mesh3d(mesh.clone()),
+                                MeshMaterial3d(material.clone()),
+                            ));
+                        }
+                    }
                 }
             }
         }
