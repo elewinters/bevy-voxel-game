@@ -16,11 +16,11 @@ impl Plugin for WorldGenPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: u8 = 3;
+const RENDER_DISTANCE: u32 = 3;
 
-const CHUNK_SIZE_X: u8 = 32;
-const CHUNK_SIZE_Y: u8 = 12;
-const CHUNK_SIZE_Z: u8 = 32;
+const CHUNK_SIZE_X: u32 = 32;
+const CHUNK_SIZE_Y: u32 = 1;
+const CHUNK_SIZE_Z: u32 = 32;
 
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
