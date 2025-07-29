@@ -15,6 +15,7 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Update, (
             move_player,
             look_player,
+            fly_player
         ));
     }
 }
@@ -31,14 +32,16 @@ const GRAVITY: f32 = -9.81;
 /*      components     */
 /* ------------------- */
 #[derive(Component)]
-pub struct Player;
+pub struct Player {
+    fly: bool
+}
 
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
 pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
-        Player,
+        Player { fly: false },
 
         Transform::from_xyz(0.0, 20.0, 0.0),
         Visibility::default(),
@@ -76,6 +79,7 @@ fn move_player(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     
+    player: Single<&Player>,
     player_transform: Single<&Transform, With<Player>>,
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
     controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
@@ -99,20 +103,31 @@ fn move_player(
     if keyboard.pressed(KeyCode::Space) {
         input.y += JUMP_POWER;
     }
+    if keyboard.pressed(KeyCode::ShiftLeft) && player.fly {
+        input.y -= JUMP_POWER;
+    }
 
     // gravity stuff
 
-    if let Some(x) = controller_output && x.grounded {
-        *vertical_movement = 0.0;
+    if !player.fly {
+        if let Some(x) = controller_output && x.grounded {
+            *vertical_movement = 0.0;
 
-        // if we're jumping
-        if input.y > 0.0 {
-            *vertical_movement = input.y;
+            // if we're jumping
+            if input.y > 0.0 {
+                *vertical_movement = input.y;
+            }
         }
-    }
 
-    input.y = *vertical_movement;
-    *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
+        input.y = *vertical_movement;
+        *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
+    }
+    else {
+        // make the player faster when flying
+        input.x *= 4.0;
+        input.y *= 2.0;
+        input.z *= 4.0;
+    }
 
     // this is where we actually move the player
     // we use the player's rotation so that we move in the direction that we're facing
@@ -135,4 +150,14 @@ fn look_player(
 
     player_transform.rotation = Quat::from_axis_angle(Vec3::Y, look.x.to_radians());
     camera_transform.rotation = Quat::from_axis_angle(Vec3::X, look.y.to_radians());
+}
+
+// enable flying on pressing F
+fn fly_player(
+    mut player: Single<&mut Player>,
+    keys: Res<ButtonInput<KeyCode>>,
+) {
+    if keys.just_pressed(KeyCode::KeyF) {
+        player.fly = !player.fly;
+    }
 }
