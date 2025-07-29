@@ -35,6 +35,28 @@ fn spawn_map(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // blue sky
+    commands.insert_resource(ClearColor(Color::linear_rgb(0.83, 0.96, 0.96)));
+
+    // some ambient light
+    commands.insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 10000.0,
+        affects_lightmapped_meshes: true,
+    });
+
+    // the sun
+    commands.spawn((
+        DirectionalLight {
+            illuminance: light_consts::lux::FULL_DAYLIGHT,
+            shadows_enabled: true,
+            ..default()
+        },
+
+        Transform::from_xyz(0.0, 10_000.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
+
+    // terrain
     let noise = Perlin::new(512);
 
     let size_x = 32 * 3;
