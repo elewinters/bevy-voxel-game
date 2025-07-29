@@ -72,12 +72,15 @@ fn spawn_chunk(
 
     for chunk_x in 0..RENDER_DISTANCE {
         for chunk_z in 0..RENDER_DISTANCE {
+            let chunk_position_x = player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32));
+            let chunk_position_z = player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32));
+
             let mut chunk = commands.spawn((
                 Chunk,
                 Transform::from_xyz(
-                    player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32)),
+                    chunk_position_x,
                     0.0,
-                    player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32))
+                    chunk_position_z
                 )
             ));
 
@@ -92,9 +95,9 @@ fn spawn_chunk(
                                 Transform::from_xyz(
                                     x as f32, 
                                     generate_noise(
-                                        x as f64 + player_x as f64 + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32)) as f64, 
+                                        x as f64 + chunk_position_x as f64,
                                         y as f64, 
-                                        z as f64 + player_z as f64 + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32)) as f64
+                                        z as f64 + chunk_position_z as f64
                                     ), 
                                     z as f32
                                 ),
