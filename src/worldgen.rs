@@ -92,9 +92,9 @@ fn spawn_chunk(
                                 Transform::from_xyz(
                                     x as f32, 
                                     generate_noise(
-                                        x as f64 + player_x as f64, 
+                                        x as f64 + player_x as f64 + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32)) as f64, 
                                         y as f64, 
-                                        z as f64 + player_z as f64
+                                        z as f64 + player_z as f64 + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32)) as f64
                                     ), 
                                     z as f32
                                 ),
