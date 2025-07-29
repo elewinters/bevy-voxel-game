@@ -84,7 +84,7 @@ fn move_player(
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
     controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
 
-    mut vertical_movement: Local<f32>,
+    mut gravity: Local<f32>,
 ) {
     let mut input = Vec3::default();
 
@@ -108,22 +108,23 @@ fn move_player(
     }
 
     // gravity stuff
-
+    // do not apply gravity if we are flying
     if !player.fly {
         if let Some(x) = controller_output && x.grounded {
-            *vertical_movement = 0.0;
+            *gravity = 0.0;
 
             // if we're jumping
             if input.y > 0.0 {
-                *vertical_movement = input.y;
+                *gravity = input.y;
             }
         }
 
-        input.y = *vertical_movement;
-        *vertical_movement += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
+        input.y = *gravity;
+        *gravity += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
     }
-    else {
-        // make the player faster when flying
+    
+    // make the player faster when flying
+    if player.fly {
         input.x *= 4.0;
         input.y *= 2.0;
         input.z *= 4.0;
