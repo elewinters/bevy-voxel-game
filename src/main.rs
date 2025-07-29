@@ -26,7 +26,7 @@ fn main() {
                         font_size: 20.0,
                         ..default()
                     },
-                    text_color: Color::from(YELLOW),
+                    text_color: Color::from(BLACK),
                     refresh_interval: Duration::from_millis(250),
                     enabled: true,
                 },
