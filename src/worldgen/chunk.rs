@@ -30,9 +30,8 @@ impl Plugin for ChunkPlugin {
 const RENDER_DISTANCE: u32 = 6;
 const RENDER_DISTANCE_HALVED: i32 = (RENDER_DISTANCE / 2) as i32;
 
-const CHUNK_SIZE_X: u32 = 32;
-const CHUNK_SIZE_Y: u32 = 1;
-const CHUNK_SIZE_Z: u32 = 32;
+const CHUNK_SIZE_HORIZONTAL: u32 = 32;
+const CHUNK_SIZE_VERTICAL: u32 = 1;
 
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
@@ -67,6 +66,13 @@ struct Chunk;
 /* ------------------ */
 /*      functions     */
 /* ------------------ */
+
+// convert from world coordinates to chunk coordinates
+// floor() is for rounding up (important for negative coordinates)
+fn world_to_chunk(world_pos: f32) -> i32 {
+    (world_pos / CHUNK_SIZE_HORIZONTAL as f32).floor() as i32
+}
+
 fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
     let noise = Perlin::new(512);
     let noise_y = noise.get([x / FLATNESS , y / FLATNESS , z / FLATNESS]) * SPIKINESS;
@@ -97,9 +103,9 @@ fn spawn_single_chunk(
     let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
     let material = materials.add(Color::from(LAWN_GREEN));
 
-    for x in 0..CHUNK_SIZE_X {
-        for y in 0..CHUNK_SIZE_Y {
-            for z in 0..CHUNK_SIZE_Z {
+    for x in 0..CHUNK_SIZE_HORIZONTAL {
+        for y in 0..CHUNK_SIZE_VERTICAL {
+            for z in 0..CHUNK_SIZE_HORIZONTAL {
                 // spawn a cube as a child of the chunk
                 chunk.with_child((
                     Transform::from_xyz(
@@ -150,10 +156,8 @@ fn spawn_chunks(
     // track existing chunks
     let mut existing_chunks = HashSet::new();
     for transform in chunk_query {
-        // convert from world coordinates to chunk coordinates
-        // floor() is for rounding up (important for negative coordinates)
-        let chunk_x = (transform.translation.x / CHUNK_SIZE_X as f32).floor() as i32;
-        let chunk_z = (transform.translation.z / CHUNK_SIZE_Z as f32).floor() as i32;
+        let chunk_x = world_to_chunk(transform.translation.x);
+        let chunk_z = world_to_chunk(transform.translation.z);
 
         existing_chunks.insert((chunk_x, chunk_z));
     }
@@ -166,8 +170,8 @@ fn spawn_chunks(
 
         commands.trigger(SpawnChunkEvent {
             // convert back to world coordinates
-            chunk_pos_x: (x * CHUNK_SIZE_X as i32) as f32,
-            chunk_pos_z: (z * CHUNK_SIZE_Z as i32) as f32,
+            chunk_pos_x: (x * CHUNK_SIZE_HORIZONTAL as i32) as f32,
+            chunk_pos_z: (z * CHUNK_SIZE_HORIZONTAL as i32) as f32,
         });
     }
 }
@@ -183,6 +187,7 @@ fn despawn_chunks(
         for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
             let chunk_x = current_chunk.x + x;
             let chunk_z = current_chunk.z + z;
+
             desired_chunks.insert((chunk_x, chunk_z));
         }
     }
@@ -190,8 +195,8 @@ fn despawn_chunks(
     // check all existing chunks
     for (entity, transform) in chunk_query {
         // convert chunk position to chunk coordinates
-        let chunk_x = (transform.translation.x / CHUNK_SIZE_X as f32).floor() as i32;
-        let chunk_z = (transform.translation.z / CHUNK_SIZE_Z as f32).floor() as i32;
+        let chunk_x = world_to_chunk(transform.translation.x);
+        let chunk_z = world_to_chunk(transform.translation.z);
 
         // if this chunk shouldn't exist anymore, despawn it
         if !desired_chunks.contains(&(chunk_x, chunk_z)) {
@@ -207,14 +212,14 @@ fn update_current_chunk(
     let player_pos = player_transform.translation;
     
     // convert player position to chunk coordinates
-    let chunk_x = (player_pos.x / CHUNK_SIZE_X as f32).floor() as i32;
-    let chunk_z = (player_pos.z / CHUNK_SIZE_Z as f32).floor() as i32;
+    let chunk_x = world_to_chunk(player_pos.x);
+    let chunk_z = world_to_chunk(player_pos.z);
 
     // only update current_chunk if changed
     if current_chunk.x != chunk_x || current_chunk.z != chunk_z {
         current_chunk.x = chunk_x;
         current_chunk.z = chunk_z;
         
-        println!("player moved to chunk: {}, {}", chunk_x, chunk_z);
+        println!("player moved to chunk: {chunk_x}, {chunk_z}");
     }
 }
