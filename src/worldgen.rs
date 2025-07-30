@@ -45,6 +45,10 @@ struct SpawnChunkEvent {
     chunk_pos_z: f32
 }
 
+/* ------------------ */
+/*      resources     */
+/* ------------------ */
+
 // x and z represent chunk coordinates, which are integers that represent the position of the chunk in the grid
 #[derive(Resource, Default)]
 struct CurrentChunk {
