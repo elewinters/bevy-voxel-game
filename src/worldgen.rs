@@ -10,10 +10,13 @@ pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_atmosphere);
-        app.add_systems(Startup, spawn_chunk.after(player::spawn_player));
+        app.add_systems(Startup, spawn_many_chunks.after(player::spawn_player));
 
-        app.add_systems(Update, spawn_chunk_on_key_press);
+        app.add_systems(Update, spawn_chunks_on_key_press);
         app.add_systems(Update, print_current_chunk);
+
+        // spawn_single_chunk responds to SpawnChunkEvents
+        app.add_observer(spawn_single_chunk);
     }
 }
 
@@ -35,6 +38,15 @@ const CHUNKS: [[bool; 3]; 3] = [
     [true, true, true]
 ];
 
+/* --------------- */
+/*      events     */
+/* --------------- */
+#[derive(Event)]
+struct SpawnChunkEvent {
+    chunk_pos_x: f32,
+    chunk_pos_z: f32
+}
+
 /* ------------------- */
 /*      components     */
 /* ------------------- */
@@ -55,73 +67,80 @@ fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
-fn spawn_chunk(
+fn spawn_single_chunk(
+    trigger: Trigger<SpawnChunkEvent>,
+
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let event = trigger.event();
+    let mut chunk = commands.spawn((
+        Chunk,
+        Name::new(format!("CHUNK: {}, {}", event.chunk_pos_x, event.chunk_pos_z)),
+        Transform::from_xyz(
+            event.chunk_pos_x,
+            0.0,
+            event.chunk_pos_z
+        )
+    ));
 
+    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+    let material = materials.add(Color::from(LAWN_GREEN));
+
+    for x in 0..CHUNK_SIZE_X {
+        for y in 0..CHUNK_SIZE_Y {
+            for z in 0..CHUNK_SIZE_Z {
+                // spawn a cube as a child of the chunk
+                chunk.with_child((
+                    Transform::from_xyz(
+                        x as f32, 
+                        generate_noise(
+                            x as f64 + event.chunk_pos_x as f64,
+                            y as f64, 
+                            z as f64 + event.chunk_pos_z as f64
+                        ), 
+                        z as f32
+                    ),
+                    Collider::cuboid(0.5, 0.5, 0.5),
+
+                    Mesh3d(mesh.clone()),
+                    MeshMaterial3d(material.clone()),
+                ));
+            }
+        }
+    }
+}
+
+fn spawn_many_chunks(
+    mut commands: Commands,
     player_transform: Single<&Transform, With<player::Player>>
 ) {
     let player_x = player_transform.translation.x;
     let player_z = player_transform.translation.z;
-
-    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let material = materials.add(Color::from(LAWN_GREEN));
 
     // this makes it so that this spawns chunks around the player (so we spawn in the center) rather than the player getting spawned on the bottom left corner of the chunk
     let start_offset = -((RENDER_DISTANCE as f32) / 2.0);
 
     for chunk_x in 0..RENDER_DISTANCE {
         for chunk_z in 0..RENDER_DISTANCE {
-            let chunk_position_x = player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32));
-            let chunk_position_z = player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32));
+            let chunk_pos_x = player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32));
+            let chunk_pos_z = player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32));
 
-            let mut chunk = commands.spawn((
-                Chunk,
-                Name::new(format!("CHUNK: {chunk_x}, {chunk_z}")),
-                Transform::from_xyz(
-                    chunk_position_x,
-                    0.0,
-                    chunk_position_z
-                )
-            ));
-
-            for x in 0..CHUNK_SIZE_X {
-                for y in 0..CHUNK_SIZE_Y {
-                    for z in 0..CHUNK_SIZE_Z {
-                        if x == 0 || x == CHUNK_SIZE_X - 1 ||
-                        y == 0 || y == CHUNK_SIZE_Y - 1 ||
-                        z == 0 || z == CHUNK_SIZE_Z - 1 {
-                            // spawn a cube as a child of the chunk
-                            chunk.with_child((
-                                Transform::from_xyz(
-                                    x as f32, 
-                                    generate_noise(
-                                        x as f64 + chunk_position_x as f64,
-                                        y as f64, 
-                                        z as f64 + chunk_position_z as f64
-                                    ), 
-                                    z as f32
-                                ),
-                                Collider::cuboid(0.5, 0.5, 0.5),
-
-                                Mesh3d(mesh.clone()),
-                                MeshMaterial3d(material.clone()),
-                            ));
-                        }
-                    }
-                }
-            }
+            commands.trigger(SpawnChunkEvent {
+                chunk_pos_x: chunk_pos_x,
+                chunk_pos_z: chunk_pos_z
+            });
         }
     }
 }
 
-fn spawn_chunk_on_key_press(
+fn spawn_chunks_on_key_press(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>
 ) {
     if keys.just_pressed(KeyCode::KeyP) {
-        commands.run_system_cached(spawn_chunk);
+        commands.run_system_cached(spawn_many_chunks);
     }
 }
 
