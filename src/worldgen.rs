@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
@@ -10,13 +12,15 @@ pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_atmosphere);
-        app.add_systems(Startup, spawn_many_chunks.after(player::spawn_player));
-
-        app.add_systems(Update, spawn_chunks_on_key_press);
-        app.add_systems(Update, print_current_chunk);
+        app.add_systems(Update, (
+            update_current_chunk, 
+            spawn_chunks)
+        );
 
         // spawn_single_chunk responds to SpawnChunkEvents
         app.add_observer(spawn_single_chunk);
+
+        app.init_resource::<CurrentChunk>();
     }
 }
 
@@ -32,12 +36,6 @@ const CHUNK_SIZE_Z: u32 = 32;
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
 
-const CHUNKS: [[bool; 3]; 3] = [
-    [true, true, true],
-    [true, true, true],
-    [true, true, true]
-];
-
 /* --------------- */
 /*      events     */
 /* --------------- */
@@ -45,6 +43,13 @@ const CHUNKS: [[bool; 3]; 3] = [
 struct SpawnChunkEvent {
     chunk_pos_x: f32,
     chunk_pos_z: f32
+}
+
+// x and z represent chunk coordinates, which are integers that represent the position of the chunk in the grid
+#[derive(Resource, Default)]
+struct CurrentChunk {
+    x: i32,
+    z: i32
 }
 
 /* ------------------- */
@@ -77,7 +82,6 @@ fn spawn_single_chunk(
     let event = trigger.event();
     let mut chunk = commands.spawn((
         Chunk,
-        Name::new(format!("CHUNK: {}, {}", event.chunk_pos_x, event.chunk_pos_z)),
         Transform::from_xyz(
             event.chunk_pos_x,
             0.0,
@@ -112,60 +116,56 @@ fn spawn_single_chunk(
     }
 }
 
-fn spawn_many_chunks(
+// spawns new chunks based on the player's position
+fn spawn_chunks(
     mut commands: Commands,
-    player_transform: Single<&Transform, With<player::Player>>
+
+    current_chunk: Res<CurrentChunk>,
+    chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let player_x = player_transform.translation.x;
-    let player_z = player_transform.translation.z;
+    let half_dist = (RENDER_DISTANCE / 2) as i32;
 
-    // this makes it so that this spawns chunks around the player (so we spawn in the center) rather than the player getting spawned on the bottom left corner of the chunk
-    let start_offset = -((RENDER_DISTANCE as f32) / 2.0);
-
-    for chunk_x in 0..RENDER_DISTANCE {
-        for chunk_z in 0..RENDER_DISTANCE {
-            let chunk_pos_x = player_x.round() + (CHUNK_SIZE_X as f32 * (start_offset + chunk_x as f32));
-            let chunk_pos_z = player_z.round() + (CHUNK_SIZE_Z as f32 * (start_offset + chunk_z as f32));
-
-            commands.trigger(SpawnChunkEvent {
-                chunk_pos_x: chunk_pos_x,
-                chunk_pos_z: chunk_pos_z
-            });
-        }
-    }
-}
-
-fn spawn_chunks_on_key_press(
-    mut commands: Commands,
-    keys: Res<ButtonInput<KeyCode>>
-) {
-    if keys.just_pressed(KeyCode::KeyP) {
-        commands.run_system_cached(spawn_many_chunks);
-    }
-}
-
-fn print_current_chunk(
-    chunk_query: Query<(&Name, &Transform), With<Chunk>>,
-    player_transform: Single<&Transform, With<player::Player>>
-) {
-    let player_pos = player_transform.translation;
+    /*
+        calculate chunk coordinates that should exist
+        desired_chunks is a 2D grid of chunks based on the RENDER_DISTANCE
+        in case of the render distance being 3 it looks something like this
     
-    for (chunk_name, chunk_transform) in chunk_query {
-        let chunk_pos = chunk_transform.translation;
-        
-        // calculate chunk boundaries
-        let chunk_min_x = chunk_pos.x;
-        let chunk_max_x = chunk_pos.x + CHUNK_SIZE_X as f32;
-        let chunk_min_z = chunk_pos.z;
-        let chunk_max_z = chunk_pos.z + CHUNK_SIZE_Z as f32;
-        
-        // check if player is within chunk bounds
-        if player_pos.x >= chunk_min_x 
-            && player_pos.x < chunk_max_x
-            && player_pos.z >= chunk_min_z 
-            && player_pos.z < chunk_max_z {
-            println!("player is in chunk: {}", chunk_name);
+        [-1,-1] [0,-1] [1,-1]
+        [-1, 0] [0, 0] [1, 0]
+        [-1, 1] [0, 1] [1, 1]
+    */
+    let mut desired_chunks = HashSet::new();
+    for x in -half_dist..=half_dist {
+        for z in -half_dist..=half_dist {
+            let chunk_x = current_chunk.x + x;
+            let chunk_z = current_chunk.z + z;
+
+            desired_chunks.insert((chunk_x, chunk_z));
         }
+    }
+
+    // track existing chunks
+    let mut existing_chunks = HashSet::new();
+    for transform in chunk_query {
+        // convert from world coordinates to chunk coordinates
+        // floor() is for rounding up (important for negative coordinates)
+        let chunk_x = (transform.translation.x / CHUNK_SIZE_X as f32).floor() as i32;
+        let chunk_z = (transform.translation.z / CHUNK_SIZE_Z as f32).floor() as i32;
+
+        existing_chunks.insert((chunk_x, chunk_z));
+    }
+
+    // spawn new chunks that don't exist yet but should exist
+    for (x, z) in desired_chunks {
+        if existing_chunks.contains(&(x, z)) {
+            continue;
+        }
+
+        commands.trigger(SpawnChunkEvent {
+            // convert back to world coordinates
+            chunk_pos_x: (x * CHUNK_SIZE_X as i32) as f32,
+            chunk_pos_z: (z * CHUNK_SIZE_Z as i32) as f32,
+        });
     }
 }
 
@@ -190,4 +190,23 @@ fn spawn_atmosphere(mut commands: Commands) {
 
         Transform::from_xyz(0.0, 10_000.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
+}
+
+fn update_current_chunk(
+    mut current_chunk: ResMut<CurrentChunk>,
+    player_transform: Single<&Transform, With<player::Player>>,
+) {
+    let player_pos = player_transform.translation;
+    
+    // convert player position to chunk coordinates
+    let chunk_x = (player_pos.x / CHUNK_SIZE_X as f32).floor() as i32;
+    let chunk_z = (player_pos.z / CHUNK_SIZE_Z as f32).floor() as i32;
+
+    // only update current_chunk if changed
+    if current_chunk.x != chunk_x || current_chunk.z != chunk_z {
+        current_chunk.x = chunk_x;
+        current_chunk.z = chunk_z;
+        
+        println!("player moved to chunk: {}, {}", chunk_x, chunk_z);
+    }
 }
