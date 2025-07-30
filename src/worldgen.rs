@@ -14,8 +14,9 @@ impl Plugin for WorldGenPlugin {
         app.add_systems(Startup, spawn_atmosphere);
         app.add_systems(Update, (
             update_current_chunk, 
-            spawn_chunks)
-        );
+            spawn_chunks,
+            despawn_chunks
+        ));
 
         // spawn_single_chunk responds to SpawnChunkEvents
         app.add_observer(spawn_single_chunk);
@@ -27,7 +28,7 @@ impl Plugin for WorldGenPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: u32 = 3;
+const RENDER_DISTANCE: u32 = 6;
 
 const CHUNK_SIZE_X: u32 = 32;
 const CHUNK_SIZE_Y: u32 = 1;
@@ -170,6 +171,36 @@ fn spawn_chunks(
             chunk_pos_x: (x * CHUNK_SIZE_X as i32) as f32,
             chunk_pos_z: (z * CHUNK_SIZE_Z as i32) as f32,
         });
+    }
+}
+
+fn despawn_chunks(
+    mut commands: Commands,
+    current_chunk: Res<CurrentChunk>,
+    chunk_query: Query<(Entity, &Transform), With<Chunk>>,
+) {
+    let half_dist = (RENDER_DISTANCE / 2) as i32;
+
+    // calculate which chunks should exist (same as in spawn_chunks)
+    let mut desired_chunks = HashSet::new();
+    for x in -half_dist..=half_dist {
+        for z in -half_dist..=half_dist {
+            let chunk_x = current_chunk.x + x;
+            let chunk_z = current_chunk.z + z;
+            desired_chunks.insert((chunk_x, chunk_z));
+        }
+    }
+
+    // check all existing chunks
+    for (entity, transform) in chunk_query {
+        // convert chunk position to chunk coordinates
+        let chunk_x = (transform.translation.x / CHUNK_SIZE_X as f32).floor() as i32;
+        let chunk_z = (transform.translation.z / CHUNK_SIZE_Z as f32).floor() as i32;
+
+        // if this chunk shouldn't exist anymore, despawn it
+        if !desired_chunks.contains(&(chunk_x, chunk_z)) {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
