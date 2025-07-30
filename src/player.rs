@@ -25,7 +25,7 @@ impl Plugin for PlayerPlugin {
 /* ------------------ */
 const MOUSE_SENSITIVITY: f32 = 0.3;
 const MOVEMENT_SPEED: f32 = 8.0;
-const JUMP_POWER: f32 = 20.0;
+const JUMP_POWER: f32 = 12.0;
 const GRAVITY: f32 = -9.81;
 
 /* ------------------- */
