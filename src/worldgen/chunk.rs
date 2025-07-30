@@ -28,6 +28,7 @@ impl Plugin for ChunkPlugin {
 /*      constants     */
 /* ------------------ */
 const RENDER_DISTANCE: u32 = 6;
+const RENDER_DISTANCE_HALVED: i32 = (RENDER_DISTANCE / 2) as i32;
 
 const CHUNK_SIZE_X: u32 = 32;
 const CHUNK_SIZE_Y: u32 = 1;
@@ -127,8 +128,6 @@ fn spawn_chunks(
     current_chunk: Res<CurrentChunk>,
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let half_dist = (RENDER_DISTANCE / 2) as i32;
-
     /*
         calculate chunk coordinates that should exist
         desired_chunks is a 2D grid of chunks based on the RENDER_DISTANCE
@@ -139,8 +138,8 @@ fn spawn_chunks(
         [-1, 1] [0, 1] [1, 1]
     */
     let mut desired_chunks = HashSet::new();
-    for x in -half_dist..=half_dist {
-        for z in -half_dist..=half_dist {
+    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
+        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
             let chunk_x = current_chunk.x + x;
             let chunk_z = current_chunk.z + z;
 
@@ -178,12 +177,10 @@ fn despawn_chunks(
     current_chunk: Res<CurrentChunk>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let half_dist = (RENDER_DISTANCE / 2) as i32;
-
     // calculate which chunks should exist (same as in spawn_chunks)
     let mut desired_chunks = HashSet::new();
-    for x in -half_dist..=half_dist {
-        for z in -half_dist..=half_dist {
+    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
+        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
             let chunk_x = current_chunk.x + x;
             let chunk_z = current_chunk.z + z;
             desired_chunks.insert((chunk_x, chunk_z));
