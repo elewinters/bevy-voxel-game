@@ -77,6 +77,31 @@ fn world_to_chunk(world_pos: f32) -> i32 {
     (world_pos / CHUNK_SIZE_HORIZONTAL as f32).floor() as i32
 }
 
+ /*
+    this calculates which chunks should be around the player and what their coordinates should be
+    this is a 2D grid of chunks based on the RENDER_DISTANCE (or well, the RENDER_DISTANCE_HALVED)
+    we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
+    in case of the render distance being 3 it looks something like this
+
+    [-1,-1] [0,-1] [1,-1]
+    [-1, 0] [0, 0] [1, 0]
+    [-1, 1] [0, 1] [1, 1]
+*/
+fn generate_chunk_grid(current_chunk: &CurrentChunk) -> HashSet<(i32, i32)> {
+    let mut new_chunks: HashSet<(i32, i32)> = HashSet::new();
+
+    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
+        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
+            let chunk_x = current_chunk.x + x;
+            let chunk_z = current_chunk.z + z;
+
+            new_chunks.insert((chunk_x, chunk_z));
+        }
+    }
+
+    new_chunks
+}
+
 fn generate_noise(perlin_noise: &Perlin, x: f64, y: f64, z: f64) -> f32 {
     let noise_y = perlin_noise.get([x / FLATNESS , y / FLATNESS , z / FLATNESS]) * SPIKINESS;
 
@@ -140,27 +165,10 @@ fn spawn_chunks(
     current_chunk: Res<CurrentChunk>,
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    /*
-        calculate which chunks should be around the player and what their coordinates should be
-        this is a 2D grid of chunks based on the RENDER_DISTANCE
-        we spawn new chunks based on this grid, if a chunk doesnt already exist in that position that is
-        in case of the render distance being 3 it looks something like this
-    
-        [-1,-1] [0,-1] [1,-1]
-        [-1, 0] [0, 0] [1, 0]
-        [-1, 1] [0, 1] [1, 1]
-    */
-    let mut new_chunks = HashSet::new();
-    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-            let chunk_x = current_chunk.x + x;
-            let chunk_z = current_chunk.z + z;
+    /* generate a grid of chunk positions around the player  */
+    let mut new_chunks = generate_chunk_grid(&current_chunk);
 
-            new_chunks.insert((chunk_x, chunk_z));
-        }
-    }
-
-    // track existing chunks
+    // get existing chunks
     let mut existing_chunks = HashSet::new();
     for transform in chunk_query {
         let chunk_x = world_to_chunk(transform.translation.x);
@@ -169,8 +177,9 @@ fn spawn_chunks(
         existing_chunks.insert((chunk_x, chunk_z));
     }
 
-    // spawn new chunks that don't exist
+    // spawn new chunks based on the grid in new_chunks
     for (x, z) in new_chunks {
+        // as long as it doesn't exist already
         if existing_chunks.contains(&(x, z)) {
             continue;
         }
@@ -188,16 +197,8 @@ fn despawn_chunks(
     current_chunk: Res<CurrentChunk>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    // calculate which chunks are around the player (same as in spawn_chunks, also a 2D grid)
-    let mut chunks = HashSet::new();
-    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-            let chunk_x = current_chunk.x + x;
-            let chunk_z = current_chunk.z + z;
-
-            chunks.insert((chunk_x, chunk_z));
-        }
-    }
+    // calculate which chunks are around the player (same as in spawn_chunks)
+    let mut chunks = generate_chunk_grid(current_chunk);
 
     // check all existing chunks
     for (entity, transform) in chunk_query {
@@ -205,7 +206,7 @@ fn despawn_chunks(
         let chunk_x = world_to_chunk(transform.translation.x);
         let chunk_z = world_to_chunk(transform.translation.z);
 
-        // if this chunk isn't in the grid anymore, despawn it
+        // if this chunk isn't in the grid, despawn it
         if !chunks.contains(&(chunk_x, chunk_z)) {
             commands.entity(entity).despawn();
         }
