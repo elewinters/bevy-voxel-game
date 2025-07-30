@@ -14,7 +14,7 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Update, (
             update_current_chunk, 
             spawn_chunks,
-            despawn_chunks
+            despawn_chunks.after(spawn_chunks) // there aren't any issues with this not running after spawn_chunks but i thought i'd do it anyway for completness sake
         ));
 
         // spawn_single_chunk responds to SpawnChunkEvents
@@ -33,6 +33,8 @@ impl Plugin for ChunkPlugin {
 
         - make it so that we only have colliders in the current chunk that we're on, this will help performance a lot
         - only render vertices that we see (i made an attempt at this in a previous commit but gave up as the performance gain wasnt big enough)
+
+        - implement greedy meshing maybe????
 */
 
 /* ------------------ */
