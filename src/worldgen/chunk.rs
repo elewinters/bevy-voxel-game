@@ -21,6 +21,7 @@ impl Plugin for ChunkPlugin {
         app.add_observer(spawn_single_chunk);
 
         app.init_resource::<CurrentChunk>();
+        app.insert_resource(GlobalNoise(Perlin::new(512)));
     }
 }
 
@@ -56,6 +57,9 @@ struct CurrentChunk {
     z: i32
 }
 
+#[derive(Resource)]
+struct GlobalNoise(Perlin);
+
 /* ------------------- */
 /*      components     */
 /* ------------------- */
@@ -73,9 +77,8 @@ fn world_to_chunk(world_pos: f32) -> i32 {
     (world_pos / CHUNK_SIZE_HORIZONTAL as f32).floor() as i32
 }
 
-fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
-    let noise = Perlin::new(512);
-    let noise_y = noise.get([x / FLATNESS , y / FLATNESS , z / FLATNESS]) * SPIKINESS;
+fn generate_noise(perlin_noise: &Perlin, x: f64, y: f64, z: f64) -> f32 {
+    let noise_y = perlin_noise.get([x / FLATNESS , y / FLATNESS , z / FLATNESS]) * SPIKINESS;
 
     noise_y.round() as f32
 }
@@ -85,6 +88,7 @@ fn generate_noise(x: f64, y: f64, z: f64) -> f32 {
 /* ---------------- */
 fn spawn_single_chunk(
     trigger: Trigger<SpawnChunkEvent>,
+    perlin_noise: Res<GlobalNoise>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -111,6 +115,8 @@ fn spawn_single_chunk(
                     Transform::from_xyz(
                         x as f32, 
                         generate_noise(
+                            &perlin_noise.0,
+
                             x as f64 + event.chunk_pos_x as f64,
                             y as f64, 
                             z as f64 + event.chunk_pos_z as f64
