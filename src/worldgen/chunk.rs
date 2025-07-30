@@ -166,7 +166,7 @@ fn spawn_chunks(
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = generate_chunk_grid(&current_chunk);
+    let new_chunks = generate_chunk_grid(&current_chunk);
 
     // get existing chunks
     let mut existing_chunks = HashSet::new();
@@ -198,7 +198,7 @@ fn despawn_chunks(
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
     // calculate which chunks are around the player (same as in spawn_chunks)
-    let mut chunks = generate_chunk_grid(&current_chunk);
+    let chunks = generate_chunk_grid(&current_chunk);
 
     // check all existing chunks
     for (entity, transform) in chunk_query {
