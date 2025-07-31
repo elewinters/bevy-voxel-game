@@ -84,7 +84,7 @@ struct Chunk;
 /* ------------------ */
 
 // convert from world coordinates to chunk coordinates
-// floor() is for rounding up to the nearest whole number
+// floor() is for rounding down to the nearest whole number
 fn world_to_chunk(world_pos: f32) -> i32 {
     (world_pos / CHUNK_SIZE_HORIZONTAL as f32).floor() as i32
 }
