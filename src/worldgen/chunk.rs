@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
@@ -40,11 +38,11 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: u32 = 6;
+const RENDER_DISTANCE: i32 = 6;
 const RENDER_DISTANCE_HALVED: i32 = (RENDER_DISTANCE / 2) as i32;
 
-const CHUNK_SIZE_HORIZONTAL: u32 = 32;
-const CHUNK_SIZE_VERTICAL: u32 = 1;
+const CHUNK_SIZE_HORIZONTAL: i32 = 32;
+const CHUNK_SIZE_VERTICAL: i32 = 1;
 
 const FLATNESS: f64 = 60.0;
 const SPIKINESS: f64 = 20.0;
@@ -65,8 +63,8 @@ struct SpawnChunkEvent {
 // x and z represent chunk coordinates, which are integers that represent the position of the chunk in the grid
 #[derive(Resource, Default)]
 struct CurrentChunk {
-    x: i32,
-    z: i32
+    x: f32,
+    z: f32
 }
 
 #[derive(Resource)]
@@ -83,31 +81,26 @@ struct Chunk;
 /*      functions     */
 /* ------------------ */
 
-// convert from world coordinates to chunk coordinates
-// floor() is for rounding down to the nearest whole number
-fn world_to_chunk(world_pos: f32) -> i32 {
-    (world_pos / CHUNK_SIZE_HORIZONTAL as f32).floor() as i32
+// round up to the nearest number divisible by CHUNK_SIZE_HORIZONTAL
+fn align_pos_to_chunk(x: f32) -> f32 {
+    (CHUNK_SIZE_HORIZONTAL*((x as i32 + (CHUNK_SIZE_HORIZONTAL-1))/CHUNK_SIZE_HORIZONTAL)) as f32
 }
 
- /*
+/*
     this calculates which chunks should be around the player and what their coordinates should be
     this is a 2D grid of chunks based on the RENDER_DISTANCE (or well, the RENDER_DISTANCE_HALVED)
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
     in case of the render distance being 3 it looks something like this
-
-    [-1,-1] [0,-1] [1,-1]
-    [-1, 0] [0, 0] [1, 0]
-    [-1, 1] [0, 1] [1, 1]
 */
-fn generate_chunk_grid(current_chunk: &CurrentChunk) -> HashSet<(i32, i32)> {
-    let mut new_chunks: HashSet<(i32, i32)> = HashSet::new();
+fn generate_chunk_grid(current_chunk: &CurrentChunk) -> Vec<(f32, f32)> {
+    let mut new_chunks: Vec<(f32, f32)> = Vec::new();
 
     for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
         for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-            let chunk_x = current_chunk.x + x;
-            let chunk_z = current_chunk.z + z;
+            let chunk_x = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL) as f32;
+            let chunk_z = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL) as f32;
 
-            new_chunks.insert((chunk_x, chunk_z));
+            new_chunks.push((chunk_x, chunk_z));
         }
     }
 
@@ -181,12 +174,9 @@ fn spawn_chunks(
     let new_chunks = generate_chunk_grid(&current_chunk);
 
     // get existing chunks
-    let mut existing_chunks = HashSet::new();
+    let mut existing_chunks = Vec::new();
     for transform in chunk_query {
-        let chunk_x = world_to_chunk(transform.translation.x);
-        let chunk_z = world_to_chunk(transform.translation.z);
-
-        existing_chunks.insert((chunk_x, chunk_z));
+        existing_chunks.push((transform.translation.x, transform.translation.z));
     }
 
     // spawn new chunks based on the grid in new_chunks
@@ -197,9 +187,8 @@ fn spawn_chunks(
         }
 
         commands.trigger(SpawnChunkEvent {
-            // convert back to world coordinates
-            chunk_pos_x: (x * CHUNK_SIZE_HORIZONTAL as i32) as f32,
-            chunk_pos_z: (z * CHUNK_SIZE_HORIZONTAL as i32) as f32,
+            chunk_pos_x: x as f32,
+            chunk_pos_z: z as f32,
         });
     }
 }
@@ -214,12 +203,8 @@ fn despawn_chunks(
 
     // check all existing chunks
     for (entity, transform) in chunk_query {
-        // convert chunk position to chunk coordinates
-        let chunk_x = world_to_chunk(transform.translation.x);
-        let chunk_z = world_to_chunk(transform.translation.z);
-
         // if this chunk isn't in the grid, despawn it
-        if !chunks.contains(&(chunk_x, chunk_z)) {
+        if !chunks.contains(&(transform.translation.x, transform.translation.z)) {
             commands.entity(entity).despawn();
         }
     }
@@ -231,9 +216,9 @@ fn update_current_chunk(
 ) {
     let player_pos = player_transform.translation;
     
-    // convert player position to chunk coordinates
-    let chunk_x = world_to_chunk(player_pos.x);
-    let chunk_z = world_to_chunk(player_pos.z);
+    // snap player position to chunk coordinates
+    let chunk_x = align_pos_to_chunk(player_pos.x);
+    let chunk_z = align_pos_to_chunk(player_pos.z);
 
     // only update current_chunk if changed
     if current_chunk.x != chunk_x || current_chunk.z != chunk_z {
