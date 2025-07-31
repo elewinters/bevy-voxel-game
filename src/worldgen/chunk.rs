@@ -9,16 +9,16 @@ use crate::player;
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
-            update_current_chunk, 
-            spawn_chunks,
-            despawn_chunks.after(spawn_chunks) // there aren't any issues with this not running after spawn_chunks but i thought i'd do it anyway for completness sake
-        ));
+        app.add_systems(Update, update_current_chunk);
+        app.add_systems(Startup, startup);
 
         // spawn_single_chunk responds to SpawnChunkEvents
         app.add_observer(spawn_single_chunk);
 
-        app.init_resource::<CurrentChunk>();
+        // and all of these respond to CurrentChunkChangedEvents
+        app.add_observer(spawn_chunks);
+        app.add_observer(despawn_chunks);
+
         app.insert_resource(GlobalNoise(Perlin::new(512)));
     }
 }
@@ -56,16 +56,17 @@ struct SpawnChunkEvent {
     chunk_pos_z: f32
 }
 
-/* ------------------ */
-/*      resources     */
-/* ------------------ */
-
-// x and z represent chunk coordinates, which are integers that represent the position of the chunk in the grid
-#[derive(Resource, Default)]
-struct CurrentChunk {
+// the chunk that the player is currently standing on has changed
+// x and z represent the coordinates of the new chunk that we've stepped on
+#[derive(Event)]
+struct CurrentChunkChangedEvent {
     x: f32,
     z: f32
 }
+
+/* ------------------ */
+/*      resources     */
+/* ------------------ */
 
 #[derive(Resource)]
 struct GlobalNoise(Perlin);
@@ -92,7 +93,7 @@ fn align_pos_to_chunk(x: f32) -> f32 {
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
     in case of the render distance being 3 it looks something like this
 */
-fn generate_chunk_grid(current_chunk: &CurrentChunk) -> Vec<(f32, f32)> {
+fn generate_chunk_grid(current_chunk: &CurrentChunkChangedEvent) -> Vec<(f32, f32)> {
     let mut new_chunks: Vec<(f32, f32)> = Vec::new();
 
     for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
@@ -116,6 +117,15 @@ fn generate_noise(perlin_noise: &Perlin, x: f64, y: f64, z: f64) -> f32 {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
+
+// triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
+fn startup(mut commands: Commands) {
+    commands.trigger(CurrentChunkChangedEvent {
+        x: 0.0,
+        z: 0.0
+    })
+}
+
 fn spawn_single_chunk(
     trigger: Trigger<SpawnChunkEvent>,
     perlin_noise: Res<GlobalNoise>,
@@ -165,13 +175,14 @@ fn spawn_single_chunk(
 
 // spawns new chunks based on the player's position
 fn spawn_chunks(
+    trigger: Trigger<CurrentChunkChangedEvent>,
     mut commands: Commands,
 
-    current_chunk: Res<CurrentChunk>,
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
+    let current_chunk = trigger.event();
     /* generate a grid of chunk positions around the player  */
-    let new_chunks = generate_chunk_grid(&current_chunk);
+    let new_chunks = generate_chunk_grid(current_chunk);
 
     // get existing chunks
     let mut existing_chunks = Vec::new();
@@ -194,12 +205,13 @@ fn spawn_chunks(
 }
 
 fn despawn_chunks(
+    trigger: Trigger<CurrentChunkChangedEvent>,
     mut commands: Commands,
-    current_chunk: Res<CurrentChunk>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
+    let current_chunk = trigger.event();
     // calculate which chunks are around the player (same as in spawn_chunks)
-    let chunks = generate_chunk_grid(&current_chunk);
+    let chunks = generate_chunk_grid(current_chunk);
 
     // check all existing chunks
     for (entity, transform) in chunk_query {
@@ -211,8 +223,10 @@ fn despawn_chunks(
 }
 
 fn update_current_chunk(
-    mut current_chunk: ResMut<CurrentChunk>,
+    mut commands: Commands,
     player_transform: Single<&Transform, With<player::Player>>,
+
+    mut current_chunk: Local<(f32, f32)>
 ) {
     let player_pos = player_transform.translation;
     
@@ -221,9 +235,15 @@ fn update_current_chunk(
     let chunk_z = align_pos_to_chunk(player_pos.z);
 
     // only update current_chunk if changed
-    if current_chunk.x != chunk_x || current_chunk.z != chunk_z {
-        current_chunk.x = chunk_x;
-        current_chunk.z = chunk_z;
+    if current_chunk.0 != chunk_x || current_chunk.1 != chunk_z {
+
+        current_chunk.0 = chunk_x;
+        current_chunk.1 = chunk_z;
+
+        commands.trigger(CurrentChunkChangedEvent {
+            x: chunk_x,
+            z: chunk_z
+        });
         
         println!("player moved to chunk: {chunk_x}, {chunk_z}");
     }
