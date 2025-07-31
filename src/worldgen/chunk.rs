@@ -24,11 +24,6 @@ impl Plugin for ChunkPlugin {
 }
 /* 
     TODO:
-        - make it so that CurrentChunk represents the actual chunk position in world space, 
-        instead of having their own positioning system (this is just confusing)
-        world_to_chunk could instead just align the world position to the chunk size,
-        so that 27.0 becomes 32.0 and 58.0 becomes 64.0
-
         - make it so that we only have colliders in the current chunk that we're on, this will help performance a lot
         - only render vertices that we see (i made an attempt at this in a previous commit but gave up as the performance gain wasnt big enough)
 
