@@ -82,9 +82,10 @@ struct Chunk;
 /*      functions     */
 /* ------------------ */
 
-// round up to the nearest number divisible by CHUNK_SIZE_HORIZONTAL
+// round to the nearest chunk boundary (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
 fn align_pos_to_chunk(x: f32) -> f32 {
-    (CHUNK_SIZE_HORIZONTAL*((x as i32 + (CHUNK_SIZE_HORIZONTAL-1))/CHUNK_SIZE_HORIZONTAL)) as f32
+    let chunk_size = CHUNK_SIZE_HORIZONTAL as f32;
+    (x / chunk_size).floor() * chunk_size
 }
 
 /*
@@ -231,8 +232,10 @@ fn update_current_chunk(
     let player_pos = player_transform.translation;
     
     // snap player position to chunk coordinates
+    println!("real x, z: {}, {}", player_pos.x, player_pos.z);
     let chunk_x = align_pos_to_chunk(player_pos.x);
     let chunk_z = align_pos_to_chunk(player_pos.z);
+    println!("aligned x, z: {}, {}", chunk_x, chunk_z);
 
     // only update current_chunk if changed
     if current_chunk.0 != chunk_x || current_chunk.1 != chunk_z {
