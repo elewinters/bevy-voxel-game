@@ -47,8 +47,11 @@ const SPIKINESS: f64 = 20.0;
 /* --------------- */
 #[derive(Event)]
 struct SpawnChunkEvent {
-    chunk_pos_x: f32,
-    chunk_pos_z: f32
+    new_chunk_x: f32,
+    new_chunk_z: f32,
+
+    current_chunk_x: f32,
+    current_chunk_z: f32
 }
 
 // the chunk that the player is currently standing on has changed
@@ -134,9 +137,9 @@ fn spawn_single_chunk(
     let mut chunk = commands.spawn((
         Chunk,
         Transform::from_xyz(
-            event.chunk_pos_x,
+            event.new_chunk_x,
             0.0,
-            event.chunk_pos_z
+            event.new_chunk_z
         )
     ));
 
@@ -153,9 +156,9 @@ fn spawn_single_chunk(
                         generate_noise(
                             &perlin_noise.0,
 
-                            x as f64 + event.chunk_pos_x as f64,
+                            x as f64 + event.new_chunk_x as f64,
                             y as f64, 
-                            z as f64 + event.chunk_pos_z as f64
+                            z as f64 + event.new_chunk_z as f64
                         ), 
                         z as f32
                     ),
@@ -194,8 +197,11 @@ fn spawn_chunks(
         }
 
         commands.trigger(SpawnChunkEvent {
-            chunk_pos_x: x as f32,
-            chunk_pos_z: z as f32,
+            new_chunk_x: x as f32,
+            new_chunk_z: z as f32,
+
+            current_chunk_x: current_chunk.x,
+            current_chunk_z: current_chunk.z
         });
     }
 }
@@ -227,10 +233,8 @@ fn update_current_chunk(
     let player_pos = player_transform.translation;
     
     // snap player position to chunk coordinates
-    println!("real x, z: {}, {}", player_pos.x, player_pos.z);
     let chunk_x = align_pos_to_chunk(player_pos.x);
     let chunk_z = align_pos_to_chunk(player_pos.z);
-    println!("aligned x, z: {}, {}", chunk_x, chunk_z);
 
     // only update current_chunk if changed
     if current_chunk.0 != chunk_x || current_chunk.1 != chunk_z {
