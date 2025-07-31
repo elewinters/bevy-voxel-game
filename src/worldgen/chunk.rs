@@ -47,11 +47,8 @@ const SPIKINESS: f64 = 20.0;
 /* --------------- */
 #[derive(Event)]
 struct SpawnChunkEvent {
-    new_chunk_x: f32,
-    new_chunk_z: f32,
-
-    current_chunk_x: f32,
-    current_chunk_z: f32
+    chunk_pos_x: f32,
+    chunk_pos_z: f32
 }
 
 // the chunk that the player is currently standing on has changed
@@ -137,9 +134,9 @@ fn spawn_single_chunk(
     let mut chunk = commands.spawn((
         Chunk,
         Transform::from_xyz(
-            event.new_chunk_x,
+            event.chunk_pos_x,
             0.0,
-            event.new_chunk_z
+            event.chunk_pos_z
         )
     ));
 
@@ -156,9 +153,9 @@ fn spawn_single_chunk(
                         generate_noise(
                             &perlin_noise.0,
 
-                            x as f64 + event.new_chunk_x as f64,
+                            x as f64 + event.chunk_pos_x as f64,
                             y as f64, 
-                            z as f64 + event.new_chunk_z as f64
+                            z as f64 + event.chunk_pos_z as f64
                         ), 
                         z as f32
                     ),
@@ -197,11 +194,8 @@ fn spawn_chunks(
         }
 
         commands.trigger(SpawnChunkEvent {
-            new_chunk_x: x as f32,
-            new_chunk_z: z as f32,
-
-            current_chunk_x: current_chunk.x,
-            current_chunk_z: current_chunk.z
+            chunk_pos_x: x as f32,
+            chunk_pos_z: z as f32,
         });
     }
 }
