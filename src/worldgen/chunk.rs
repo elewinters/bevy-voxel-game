@@ -25,10 +25,8 @@ impl Plugin for ChunkPlugin {
 /* 
     TODO:
         - make it so that each chunk has one big mesh of cubes rather than each cube being an individual mesh
-        - make it so that we only have colliders in the current chunk that we're on, this will help performance a lot (this wont be necessary if we implement the above)
-        - only render vertices that we see (i made an attempt at this in a previous commit but gave up as the performance gain wasnt big enough)
-
-        - implement greedy meshing maybe????
+        - implement face culling
+        - add multithreading to chunk generation
 */
 
 /* ------------------ */
