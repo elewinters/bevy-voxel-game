@@ -5,7 +5,7 @@ pub struct WindowPlugin;
 impl Plugin for WindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, (window_setup, cursor_lock));
-        app.add_systems(Update, unlock_cursor_on_esc);
+        app.add_systems(Update, cursor_locking_on_esc);
     }
 }
 
@@ -15,12 +15,21 @@ fn window_setup(mut window: Single<&mut Window>) {
 }
 
 // enables us to unlock the cursor when we press esc
-fn unlock_cursor_on_esc(
+fn cursor_locking_on_esc(
     mut commands: Commands,
-    keys: Res<ButtonInput<KeyCode>>
+    keys: Res<ButtonInput<KeyCode>>,
+
+    mut switch: Local<bool>
 ) {
     if keys.just_pressed(KeyCode::Escape) {
-        commands.run_system_cached(cursor_unlock);
+        *switch = !(*switch);
+
+        if *switch {
+            commands.run_system_cached(cursor_unlock);
+        }
+        else {
+            commands.run_system_cached(cursor_lock);
+        }
     }
 }
 
