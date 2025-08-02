@@ -27,6 +27,8 @@ impl Plugin for ChunkPlugin {
         - make it so that each chunk has one big mesh of cubes rather than each cube being an individual mesh
         - implement face culling
         - add multithreading to chunk generation
+
+        - switch noise crate from noise-rs to bracket-noise (it's apparently 20x faster)
 */
 
 /* ------------------ */
