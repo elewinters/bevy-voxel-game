@@ -24,7 +24,7 @@ impl Plugin for ChunkPlugin {
 }
 /* 
     TODO:
-        - make it so that each chunk has one big mesh of cubes rather than each cube being an individual mesh
+        - make it so that the mesh collider is only on the current chunk we're standing on 
         - implement face culling
         - add multithreading to chunk generation
 
@@ -34,7 +34,7 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: i32 = 6;
+const RENDER_DISTANCE: i32 = 12;
 const RENDER_DISTANCE_HALVED: i32 = (RENDER_DISTANCE / 2) as i32;
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -157,7 +157,7 @@ fn spawn_single_chunk(
         )
     ));
 
-    let mut final_mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
+    let mut final_mesh = Cuboid::new(0.0, 0.0, 0.0).mesh().build();
 
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for y in 0..CHUNK_SIZE_VERTICAL {
@@ -182,7 +182,7 @@ fn spawn_single_chunk(
     }
 
     chunk.with_child((
-        Transform::from_xyz(0.0, 0.0, 0.0),
+        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).unwrap(),
 
         Mesh3d(meshes.add(final_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
