@@ -1,12 +1,6 @@
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
-use bevy::render::{
-    mesh::Indices,
-    render_asset::RenderAssetUsages,
-    render_resource::PrimitiveTopology,
-};
-
 use bevy_rapier3d::prelude::*;
 use noise::*;
 
@@ -135,7 +129,7 @@ fn startup(
     let mut mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
     let mut mesh2 = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
 
-    mesh2.translate_by(Vec3::new(1.0, 1.0, 1.0));
+    mesh2.translate_by(Vec3::new(1.0, 0.0, 1.0));
     mesh.merge(&mesh2).unwrap();
 
     commands.spawn((
