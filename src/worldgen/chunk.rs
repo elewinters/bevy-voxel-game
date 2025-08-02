@@ -115,17 +115,18 @@ fn generate_noise(perlin_noise: &Perlin, x: f64, y: f64, z: f64) -> f32 {
 /*      systems     */
 /* ---------------- */
 
-// triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
 fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
     commands.trigger(CurrentChunkChangedEvent {
         x: 0.0,
         z: 0.0
     });
 
+    // spawn a few purple test cubes at 0.0
     let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
     let mut mesh2 = mesh.clone();
 
@@ -148,6 +149,8 @@ fn spawn_single_chunk(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let event = trigger.event();
+
+    // chunk entity, we will append the mesh data later after we generate it
     let mut chunk = commands.spawn((
         Chunk,
         Transform::from_xyz(
@@ -157,13 +160,16 @@ fn spawn_single_chunk(
         )
     ));
 
+    // the for loop below adds to this mesh to create one big mesh
     let mut final_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for y in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
+                // create a mesh
                 let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
                 
+                // change its position to the one we want
                 mesh.translate_by(Vec3::new(
                     x as f32, 
                     generate_noise(
@@ -175,14 +181,16 @@ fn spawn_single_chunk(
                     ), 
                     z as f32
                 ));
-
-                final_mesh.merge(&mesh).unwrap();
+                
+                // merge the generated mesh with the final mesh
+                final_mesh.merge(&mesh).expect("vertex attributes are incompatible with final mesh. this should NEVER happen under normal circumstances");
             }
         }
     }
 
+    // add mesh and collider to the chunk
     chunk.with_child((
-        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).unwrap(),
+        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
 
         Mesh3d(meshes.add(final_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
@@ -197,6 +205,7 @@ fn spawn_chunks(
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     let current_chunk = trigger.event();
+
     /* generate a grid of chunk positions around the player  */
     let new_chunks = generate_chunk_grid(current_chunk);
 
@@ -226,6 +235,7 @@ fn despawn_chunks(
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
     let current_chunk = trigger.event();
+    
     // calculate which chunks are around the player (same as in spawn_chunks)
     let chunks = generate_chunk_grid(current_chunk);
 
