@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseMotion;
 use bevy::render::camera::Exposure;
-use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 
 use bevy_rapier3d::control::KinematicCharacterController;
 
@@ -64,11 +63,6 @@ pub fn spawn_player(mut commands: Commands) {
             Transform::from_xyz(0.0, 0.2, -0.1),
             Projection::from(PerspectiveProjection {fov: 90.0_f32.to_radians(),..default()}),
 
-            Msaa::Off,
-            ScreenSpaceAmbientOcclusion {
-                quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Ultra,
-                ..default()
-            },
             Exposure::SUNLIGHT,
         )]
     ));
