@@ -25,7 +25,7 @@ impl Plugin for ChunkPlugin {
 /* 
     TODO:
         - make it so that the mesh collider is only on the current chunk we're standing on 
-        - implement face culling
+        - implement face culling (with mesh.indices_mut)
         - add multithreading to chunk generation
 
         - switch noise crate from noise-rs to bracket-noise (it's apparently 20x faster)
@@ -35,7 +35,7 @@ impl Plugin for ChunkPlugin {
 /*      constants     */
 /* ------------------ */
 const RENDER_DISTANCE: i32 = 12;
-const RENDER_DISTANCE_HALVED: i32 = (RENDER_DISTANCE / 2) as i32;
+const RENDER_DISTANCE_HALVED: i32 = RENDER_DISTANCE / 2;
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
@@ -126,8 +126,8 @@ fn startup(
         z: 0.0
     });
 
-    let mut mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
-    let mut mesh2 = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
+    let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
+    let mut mesh2 = mesh.clone();
 
     mesh2.translate_by(Vec3::new(1.0, 0.0, 1.0));
     mesh.merge(&mesh2).unwrap();
@@ -157,12 +157,12 @@ fn spawn_single_chunk(
         )
     ));
 
-    let mut final_mesh = Cuboid::new(0.0, 0.0, 0.0).mesh().build();
+    let mut final_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for y in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
-                let mut mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
+                let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
                 
                 mesh.translate_by(Vec3::new(
                     x as f32, 
