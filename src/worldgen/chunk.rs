@@ -157,33 +157,36 @@ fn spawn_single_chunk(
         )
     ));
 
-    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    let material = materials.add(Color::from(LAWN_GREEN));
+    let mut final_mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
 
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for y in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
-                // spawn a cube as a child of the chunk
-                chunk.with_child((
-                    Transform::from_xyz(
-                        x as f32, 
-                        generate_noise(
-                            &perlin_noise.0,
+                let mut mesh = Cuboid::new(1.0, 1.0, 1.0).mesh().build();
+                
+                mesh.translate_by(Vec3::new(
+                    x as f32, 
+                    generate_noise(
+                        &perlin_noise.0,
 
-                            x as f64 + event.chunk_pos_x as f64,
-                            y as f64, 
-                            z as f64 + event.chunk_pos_z as f64
-                        ), 
-                        z as f32
-                    ),
-                    Collider::cuboid(0.5, 0.5, 0.5),
-
-                    Mesh3d(mesh.clone()),
-                    MeshMaterial3d(material.clone()),
+                        x as f64 + event.chunk_pos_x as f64,
+                        y as f64, 
+                        z as f64 + event.chunk_pos_z as f64
+                    ), 
+                    z as f32
                 ));
+
+                final_mesh.merge(&mesh).unwrap();
             }
         }
     }
+
+    chunk.with_child((
+        Transform::from_xyz(0.0, 0.0, 0.0),
+
+        Mesh3d(meshes.add(final_mesh)),
+        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+    ));
 }
 
 // spawns new chunks based on the player's position
