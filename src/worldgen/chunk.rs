@@ -15,7 +15,7 @@ impl Plugin for ChunkPlugin {
         // spawn_single_chunk responds to SpawnChunkEvents
         app.add_observer(spawn_single_chunk);
 
-        // and all of these respond to CurrentChunkChangedEvents
+        // and all of these respond to ChunkChangedEvents
         app.add_observer(spawn_chunks);
         app.add_observer(despawn_chunks);
     }
@@ -35,6 +35,7 @@ const RENDER_DISTANCE_HALVED: i32 = RENDER_DISTANCE / 2;
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 
+// noise algorithm config
 const SCALE: f32 = 0.5; // number from 0.0 to 1.0
 const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
@@ -61,14 +62,13 @@ impl ChunkPosition {
 struct SpawnChunkEvent(ChunkPosition);
 
 // the chunk that the player is currently standing on has changed
-// x and z represent the coordinates of the new chunk that we've stepped on
+// ChunkPosition represents the coordinates of the new chunk that we've stepped on
 #[derive(Event)]
-struct CurrentChunkChangedEvent(ChunkPosition);
+struct ChunkChangedEvent(ChunkPosition);
 
 /* ------------------ */
 /*      resources     */
 /* ------------------ */
-
 #[derive(Resource)]
 struct PerlinNoise(FastNoiseLite);
 
@@ -83,17 +83,15 @@ struct Chunk;
 /*      functions     */
 /* ------------------ */
 
-// round to the nearest chunk boundary (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
+// round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
 fn align_pos_to_chunk(x: f32) -> f32 {
     let chunk_size = CHUNK_SIZE_HORIZONTAL as f32;
     (x / chunk_size).floor() * chunk_size
 }
 
 /*
-    this calculates which chunks should be around the player and what their coordinates should be
-    this is a 2D grid of chunks based on the RENDER_DISTANCE (or well, the RENDER_DISTANCE_HALVED)
+    this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
-    in case of the render distance being 3 it looks something like this
 */
 fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
     let mut new_chunks: Vec<ChunkPosition> = Vec::new();
@@ -119,7 +117,6 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
-
 fn startup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -132,21 +129,8 @@ fn startup(
 
     commands.insert_resource(PerlinNoise(noise));
 
-    // triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
-    commands.trigger(CurrentChunkChangedEvent(ChunkPosition::new(0.0, 0.0)));
-
-    // spawn a few purple test cubes at 0.0
-    let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
-    let mut mesh2 = mesh.clone();
-
-    mesh2.translate_by(Vec3::new(1.0, 0.0, 1.0));
-    mesh.merge(&mesh2).unwrap();
-
-    commands.spawn((
-        Transform::from_xyz(0.0, 10.0, 0.0),
-        Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(materials.add(Color::from(PURPLE)))
-    ));
+    // triggers the ChunkChangedEvent so that we actually spawn somewhere
+    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0.0, 0.0)));
 }
 
 fn spawn_single_chunk(
@@ -207,7 +191,7 @@ fn spawn_single_chunk(
 
 // spawns new chunks based on the player's position
 fn spawn_chunks(
-    trigger: Trigger<CurrentChunkChangedEvent>,
+    trigger: Trigger<ChunkChangedEvent>,
     mut commands: Commands,
 
     chunk_query: Query<&Transform, With<Chunk>>,
@@ -235,13 +219,11 @@ fn spawn_chunks(
 }
 
 fn despawn_chunks(
-    trigger: Trigger<CurrentChunkChangedEvent>,
+    trigger: Trigger<ChunkChangedEvent>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
     let current_chunk = &trigger.event().0;
-    
-    // calculate which chunks are around the player (same as in spawn_chunks)
     let chunks = generate_chunk_grid(current_chunk);
 
     // check all existing chunks
@@ -270,6 +252,6 @@ fn update_current_chunk(
         prev_chunk.x = chunk_x;
         prev_chunk.z = chunk_z;
 
-        commands.trigger(CurrentChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
+        commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
     }
 }
