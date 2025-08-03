@@ -42,7 +42,7 @@ const HEIGHT_VARIATION: f32 = 50.0;
 /* ---------------- */
 /*      structs     */
 /* ---------------- */
-#[derive(PartialEq)]
+#[derive(Default, PartialEq)]
 struct ChunkPosition {
     x: f32,
     z: f32
@@ -257,7 +257,7 @@ fn update_current_chunk(
     mut commands: Commands,
     player_transform: Single<&Transform, With<player::Player>>,
 
-    mut current_chunk: Local<(f32, f32)>
+    mut prev_chunk: Local<ChunkPosition>
 ) {
     let player_pos = player_transform.translation;
     
@@ -266,13 +266,10 @@ fn update_current_chunk(
     let chunk_z = align_pos_to_chunk(player_pos.z);
 
     // only update current_chunk if changed
-    if current_chunk.0 != chunk_x || current_chunk.1 != chunk_z {
-
-        current_chunk.0 = chunk_x;
-        current_chunk.1 = chunk_z;
+    if prev_chunk.x != chunk_x || prev_chunk.z != chunk_z {
+        prev_chunk.x = chunk_x;
+        prev_chunk.z = chunk_z;
 
         commands.trigger(CurrentChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
-        
-        println!("player moved to chunk: {chunk_x}, {chunk_z}");
     }
 }
