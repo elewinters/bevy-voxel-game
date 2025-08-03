@@ -29,7 +29,7 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: i32 = 32;
+const RENDER_DISTANCE: i32 = 16;
 const RENDER_DISTANCE_HALVED: i32 = RENDER_DISTANCE / 2;
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -39,22 +39,31 @@ const SCALE: f32 = 0.5; // number from 0.0 to 1.0
 const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
 
+/* ---------------- */
+/*      structs     */
+/* ---------------- */
+#[derive(PartialEq)]
+struct ChunkPosition {
+    x: f32,
+    z: f32
+}
+
+impl ChunkPosition {
+    fn new(x: f32, z: f32) -> Self {
+        Self {x: x, z: z}
+    }
+}
+
 /* --------------- */
 /*      events     */
 /* --------------- */
 #[derive(Event)]
-struct SpawnChunkEvent {
-    chunk_pos_x: f32,
-    chunk_pos_z: f32
-}
+struct SpawnChunkEvent(ChunkPosition);
 
 // the chunk that the player is currently standing on has changed
 // x and z represent the coordinates of the new chunk that we've stepped on
 #[derive(Event)]
-struct CurrentChunkChangedEvent {
-    x: f32,
-    z: f32
-}
+struct CurrentChunkChangedEvent(ChunkPosition);
 
 /* ------------------ */
 /*      resources     */
@@ -86,15 +95,15 @@ fn align_pos_to_chunk(x: f32) -> f32 {
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
     in case of the render distance being 3 it looks something like this
 */
-fn generate_chunk_grid(current_chunk: &CurrentChunkChangedEvent) -> Vec<(f32, f32)> {
-    let mut new_chunks: Vec<(f32, f32)> = Vec::new();
+fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
+    let mut new_chunks: Vec<ChunkPosition> = Vec::new();
 
     for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
         for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
             let chunk_x = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL) as f32;
             let chunk_z = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL) as f32;
 
-            new_chunks.push((chunk_x, chunk_z));
+            new_chunks.push(ChunkPosition::new(chunk_x, chunk_z));
         }
     }
 
@@ -124,10 +133,7 @@ fn startup(
     commands.insert_resource(PerlinNoise(noise));
 
     // triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
-    commands.trigger(CurrentChunkChangedEvent {
-        x: 0.0,
-        z: 0.0
-    });
+    commands.trigger(CurrentChunkChangedEvent(ChunkPosition::new(0.0, 0.0)));
 
     // spawn a few purple test cubes at 0.0
     let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
@@ -151,15 +157,15 @@ fn spawn_single_chunk(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let event = trigger.event();
+    let chunk_pos = &trigger.event().0;
 
     // chunk entity, we will append the mesh data later after we generate it
     let mut chunk = commands.spawn((
         Chunk,
         Transform::from_xyz(
-            event.chunk_pos_x,
+            chunk_pos.x,
             0.0,
-            event.chunk_pos_z
+            chunk_pos.z
         )
     ));
 
@@ -178,8 +184,8 @@ fn spawn_single_chunk(
                     generate_noise(
                         &perlin_noise.0,
 
-                        x as f32 + event.chunk_pos_x,
-                        z as f32 + event.chunk_pos_z
+                        x as f32 + chunk_pos.x,
+                        z as f32 + chunk_pos.z
                     ), 
                     z as f32
                 ));
@@ -206,7 +212,7 @@ fn spawn_chunks(
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let current_chunk = trigger.event();
+    let current_chunk = &trigger.event().0;
 
     /* generate a grid of chunk positions around the player  */
     let new_chunks = generate_chunk_grid(current_chunk);
@@ -214,20 +220,17 @@ fn spawn_chunks(
     // get existing chunks
     let mut existing_chunks = Vec::new();
     for transform in chunk_query {
-        existing_chunks.push((transform.translation.x, transform.translation.z));
+        existing_chunks.push(ChunkPosition::new(transform.translation.x, transform.translation.z));
     }
 
     // spawn new chunks based on the grid in new_chunks
-    for (x, z) in new_chunks {
+    for pos in new_chunks {
         // as long as it doesn't exist already
-        if existing_chunks.contains(&(x, z)) {
+        if existing_chunks.contains(&pos) {
             continue;
         }
 
-        commands.trigger(SpawnChunkEvent {
-            chunk_pos_x: x,
-            chunk_pos_z: z,
-        });
+        commands.trigger(SpawnChunkEvent(ChunkPosition::new(pos.x, pos.z)));
     }
 }
 
@@ -236,7 +239,7 @@ fn despawn_chunks(
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let current_chunk = trigger.event();
+    let current_chunk = &trigger.event().0;
     
     // calculate which chunks are around the player (same as in spawn_chunks)
     let chunks = generate_chunk_grid(current_chunk);
@@ -244,7 +247,7 @@ fn despawn_chunks(
     // check all existing chunks
     for (entity, transform) in chunk_query {
         // if this chunk isn't in the grid, despawn it
-        if !chunks.contains(&(transform.translation.x, transform.translation.z)) {
+        if !chunks.contains(&ChunkPosition::new(transform.translation.x, transform.translation.z)) {
             commands.entity(entity).despawn();
         }
     }
@@ -268,10 +271,7 @@ fn update_current_chunk(
         current_chunk.0 = chunk_x;
         current_chunk.1 = chunk_z;
 
-        commands.trigger(CurrentChunkChangedEvent {
-            x: chunk_x,
-            z: chunk_z
-        });
+        commands.trigger(CurrentChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
         
         println!("player moved to chunk: {chunk_x}, {chunk_z}");
     }
