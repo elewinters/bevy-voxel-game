@@ -18,12 +18,10 @@ impl Plugin for ChunkPlugin {
         // and all of these respond to CurrentChunkChangedEvents
         app.add_observer(spawn_chunks);
         app.add_observer(despawn_chunks);
-        app.add_observer(spawn_collider);
     }
 }
 /* 
     TODO:
-        - make it so that the mesh collider is only on the current chunk we're standing on 
         - implement face culling (with mesh.indices_mut)
         - add multithreading to chunk generation
 */
@@ -194,6 +192,8 @@ fn spawn_single_chunk(
 
     // add mesh and collider to the chunk
     chunk.with_child((
+        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
+
         Mesh3d(meshes.add(final_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
     ));
@@ -274,42 +274,5 @@ fn update_current_chunk(
         });
         
         println!("player moved to chunk: {chunk_x}, {chunk_z}");
-    }
-}
-
-fn spawn_collider(
-    trigger: Trigger<CurrentChunkChangedEvent>,
-
-    // parent
-    chunk_query: Query<(&Transform, &Children), With<Chunk>>,
-    // child
-    chunk_mesh_query: Query<&Mesh3d>,
-
-    meshes: ResMut<Assets<Mesh>>,
-    mut commands: Commands,
-) {
-    let current_chunk = trigger.event();
-
-    let x = current_chunk.x;
-    let z = current_chunk.z;
-
-    for (chunk_transform, children) in chunk_query {
-        let mesh_entity = children.iter().next().expect("first child is always the mesh entity and always exists"); 
-        let mesh = chunk_mesh_query.get(mesh_entity).expect("mesh component always exists");
-
-        let chunk_pos = chunk_transform.translation;
-
-        if chunk_pos.x == x && chunk_pos.z == z {
-            commands.entity(mesh_entity).insert(
-                Collider::from_bevy_mesh(
-                    &meshes.get(mesh.0.id()).expect("invalid mesh, this should never happen"), 
-                    &ComputedColliderShape::default()
-                )
-                .expect("incorrect mesh passed to from_bevy_mesh, this will never happen")
-            );
-        }
-        else {
-            commands.entity(mesh_entity).try_remove::<Collider>();
-        }
     }
 }
