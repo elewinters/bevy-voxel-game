@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
 use bevy_rapier3d::prelude::*;
-use noise::*;
+use fastnoise_lite::*;
 
 use crate::player;
 
@@ -19,7 +19,12 @@ impl Plugin for ChunkPlugin {
         app.add_observer(spawn_chunks);
         app.add_observer(despawn_chunks);
 
-        app.insert_resource(GlobalNoise(Perlin::new(512)));
+        // setup noise resource
+        let mut noise = FastNoiseLite::with_seed(512);
+        noise.set_frequency(Some(SCALE));
+        noise.set_noise_type(Some(NoiseType::Perlin));
+
+        app.insert_resource(PerlinNoise(noise));
     }
 }
 /* 
@@ -27,21 +32,20 @@ impl Plugin for ChunkPlugin {
         - make it so that the mesh collider is only on the current chunk we're standing on 
         - implement face culling (with mesh.indices_mut)
         - add multithreading to chunk generation
-
-        - switch noise crate from noise-rs to bracket-noise (it's apparently 20x faster)
 */
 
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
-const RENDER_DISTANCE: i32 = 12;
+const RENDER_DISTANCE: i32 = 32;
 const RENDER_DISTANCE_HALVED: i32 = RENDER_DISTANCE / 2;
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 
-const FLATNESS: f64 = 60.0;
-const SPIKINESS: f64 = 20.0;
+const SCALE: f32 = 0.5; // number from 0.0 to 1.0
+const SMOOTHNESS: f32 = 75.0;
+const HEIGHT_VARIATION: f32 = 50.0;
 
 /* --------------- */
 /*      events     */
@@ -65,7 +69,7 @@ struct CurrentChunkChangedEvent {
 /* ------------------ */
 
 #[derive(Resource)]
-struct GlobalNoise(Perlin);
+struct PerlinNoise(FastNoiseLite);
 
 /* ------------------- */
 /*      components     */
@@ -105,10 +109,10 @@ fn generate_chunk_grid(current_chunk: &CurrentChunkChangedEvent) -> Vec<(f32, f3
     new_chunks
 }
 
-fn generate_noise(perlin_noise: &Perlin, x: f64, y: f64, z: f64) -> f32 {
-    let noise_y = perlin_noise.get([x / FLATNESS , y / FLATNESS , z / FLATNESS]) * SPIKINESS;
+fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
+    let noise_y = perlin_noise.get_noise_2d(x / SMOOTHNESS, z / SMOOTHNESS) * HEIGHT_VARIATION;
 
-    noise_y.round() as f32
+    noise_y.round()
 }
 
 /* ---------------- */
@@ -142,7 +146,7 @@ fn startup(
 
 fn spawn_single_chunk(
     trigger: Trigger<SpawnChunkEvent>,
-    perlin_noise: Res<GlobalNoise>,
+    perlin_noise: Res<PerlinNoise>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -164,7 +168,7 @@ fn spawn_single_chunk(
     let mut final_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
     for x in 0..CHUNK_SIZE_HORIZONTAL {
-        for y in 0..CHUNK_SIZE_VERTICAL {
+        for _ in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
                 // create a mesh
                 let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
@@ -175,9 +179,8 @@ fn spawn_single_chunk(
                     generate_noise(
                         &perlin_noise.0,
 
-                        x as f64 + event.chunk_pos_x as f64,
-                        y as f64, 
-                        z as f64 + event.chunk_pos_z as f64
+                        x as f32 + event.chunk_pos_x,
+                        z as f32 + event.chunk_pos_z
                     ), 
                     z as f32
                 ));
@@ -190,7 +193,7 @@ fn spawn_single_chunk(
 
     // add mesh and collider to the chunk
     chunk.with_child((
-        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
+        //Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
 
         Mesh3d(meshes.add(final_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
@@ -223,8 +226,8 @@ fn spawn_chunks(
         }
 
         commands.trigger(SpawnChunkEvent {
-            chunk_pos_x: x as f32,
-            chunk_pos_z: z as f32,
+            chunk_pos_x: x,
+            chunk_pos_z: z,
         });
     }
 }

@@ -8,8 +8,9 @@ bevy = { version = "0.16.1", features = [
     "dynamic_linking", 
     "bevy_dev_tools"
 ] }
+
 bevy_rapier3d = { version = "0.30.0", features = ["simd-stable"] }
-noise = "0.9.0"
+fastnoise-lite = "1.1.1"
 
 [profile.dev]
 opt-level = 1
