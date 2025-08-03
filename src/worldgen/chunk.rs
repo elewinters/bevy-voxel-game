@@ -29,13 +29,14 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
+
+// chunk generation constants
 const RENDER_DISTANCE: i32 = 16;
-const RENDER_DISTANCE_HALVED: i32 = RENDER_DISTANCE / 2;
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 
-// noise algorithm config
+// noise algorithm constants
 const SCALE: f32 = 0.5; // number from 0.0 to 1.0
 const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
@@ -95,9 +96,10 @@ fn align_pos_to_chunk(x: f32) -> f32 {
 */
 fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
     let mut new_chunks: Vec<ChunkPosition> = Vec::new();
+    let render_half = RENDER_DISTANCE / 2;
 
-    for x in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
-        for z in -RENDER_DISTANCE_HALVED..=RENDER_DISTANCE_HALVED {
+    for x in -render_half..=render_half {
+        for z in -render_half..=render_half {
             let chunk_x = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL) as f32;
             let chunk_z = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL) as f32;
 
