@@ -18,13 +18,6 @@ impl Plugin for ChunkPlugin {
         // and all of these respond to CurrentChunkChangedEvents
         app.add_observer(spawn_chunks);
         app.add_observer(despawn_chunks);
-
-        // setup noise resource
-        let mut noise = FastNoiseLite::with_seed(512);
-        noise.set_frequency(Some(SCALE));
-        noise.set_noise_type(Some(NoiseType::Perlin));
-
-        app.insert_resource(PerlinNoise(noise));
     }
 }
 /* 
@@ -124,6 +117,13 @@ fn startup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // setup noise resource
+    let mut noise = FastNoiseLite::with_seed(512);
+    noise.set_frequency(Some(SCALE));
+    noise.set_noise_type(Some(NoiseType::Perlin));
+
+    commands.insert_resource(PerlinNoise(noise));
+
     // triggers the CurrentChunkChangedEvent so that we actually spawn somewhere
     commands.trigger(CurrentChunkChangedEvent {
         x: 0.0,
@@ -193,7 +193,7 @@ fn spawn_single_chunk(
 
     // add mesh and collider to the chunk
     chunk.with_child((
-        //Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
+        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
 
         Mesh3d(meshes.add(final_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
