@@ -51,7 +51,7 @@ struct ChunkPosition {
 
 impl ChunkPosition {
     fn new(x: f32, z: f32) -> Self {
-        Self {x: x, z: z}
+        Self {x, z}
     }
 }
 
@@ -117,11 +117,7 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
-fn startup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn startup(mut commands: Commands) {
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
     noise.set_frequency(Some(SCALE));
