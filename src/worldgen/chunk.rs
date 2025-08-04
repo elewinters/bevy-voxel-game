@@ -18,7 +18,7 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Update, update_current_chunk);
         app.add_systems(Startup, startup);
 
-        // spawn_single_chunk responds to SpawnChunkEvents
+        // spawn_chunk responds to SpawnChunkEvents
         app.add_observer(spawn_chunk);
 
         // and all of these respond to ChunkChangedEvents
@@ -28,7 +28,7 @@ impl Plugin for ChunkPlugin {
 }
 /* 
     TODO:
-        - implement face culling (with mesh.indices_mut)
+        - fix face culling (later though)
         - add multithreading to chunk generation
 */
 
@@ -210,7 +210,7 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
                 id
             });
 
-            // Add the new index
+            // add the new index
             new_indices.push(new_idx);
         }
     }
