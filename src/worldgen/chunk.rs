@@ -32,6 +32,7 @@ impl Plugin for ChunkPlugin {
 
 // chunk generation constants
 const RENDER_DISTANCE: i32 = 16;
+const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
@@ -95,7 +96,7 @@ fn align_pos_to_chunk(x: f32) -> f32 {
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
 fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
-    let mut new_chunks: Vec<ChunkPosition> = Vec::new();
+    let mut new_chunks: Vec<ChunkPosition> = Vec::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
 
     for x in -render_half..=render_half {
