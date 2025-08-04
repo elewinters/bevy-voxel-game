@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::VertexAttributeValues;
@@ -19,7 +19,7 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawn_single_chunk responds to SpawnChunkEvents
-        app.add_observer(spawn_single_chunk);
+        app.add_observer(spawn_chunk);
 
         // and all of these respond to ChunkChangedEvents
         app.add_observer(spawn_chunks);
@@ -48,6 +48,9 @@ const SCALE: f32 = 0.5; // number from 0.0 to 1.0
 const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
 
+/* -------------- */
+/*      enums     */
+/* -------------  */
 enum VoxelFace {
     Front = 0,
     Back,
@@ -102,8 +105,7 @@ struct PerlinNoise(FastNoiseLite);
 // after that the mesh gets reconstructed based on the voxels field, meaning that the destroyed block wont be there anymore
 #[derive(Component)]
 #[require(Transform, Visibility)]
-#[allow(dead_code)]
-struct Chunk(HashSet<IVec3>);
+struct Chunk;
 
 /* ------------------ */
 /*      functions     */
@@ -172,8 +174,8 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
     let mut new_uvs = Vec::new();
     let mut new_indices = Vec::new();
 
-    // keep track of which vertices we're using
-    let mut vertex_map = Vec::new();
+    // map old vertex indices to new ones using a HashMap
+    let mut vertex_map = HashMap::new();
     let mut next_vertex_id = 0;
 
     // process each face we want to keep
@@ -185,9 +187,9 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
         for &old_idx in face_vertices {
             let old_idx = old_idx as usize;
             
-            // if we haven't processed this vertex yet
-            if vertex_map.get(old_idx).is_none() {
-                // add the vertex data
+            // get or create new index for this vertex
+            let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
+                // first time seeing this vertex - add its data
                 new_positions.push([
                     positions[old_idx][0],
                     positions[old_idx][1],
@@ -203,16 +205,13 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
                     uvs[old_idx][1]
                 ]);
 
-                // map old index to new index
-                while vertex_map.len() <= old_idx {
-                    vertex_map.push(None);
-                }
-                vertex_map[old_idx] = Some(next_vertex_id);
+                let id = next_vertex_id;
                 next_vertex_id += 1;
-            }
+                id
+            });
 
-            // add the new index
-            new_indices.push(vertex_map[old_idx].unwrap());
+            // Add the new index
+            new_indices.push(new_idx);
         }
     }
 
@@ -264,6 +263,7 @@ fn startup(
     // triggers the ChunkChangedEvent so that we actually spawn somewhere
     commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
 
+    // purple test cube
     let faces_to_keep = vec![
         VoxelFace::Front,
         VoxelFace::Back,
@@ -280,7 +280,8 @@ fn startup(
     ));
 }
 
-fn spawn_single_chunk(
+// spawn a chunk at the specified position when a SpawnChunkEvent is fired
+fn spawn_chunk(
     trigger: Trigger<SpawnChunkEvent>,
     perlin_noise: Res<PerlinNoise>,
 
@@ -352,7 +353,7 @@ fn spawn_single_chunk(
 
     // spawn chunk
     commands.spawn((
-        Chunk(voxel_positions),
+        Chunk,
 
         Transform::from_xyz(
             chunk_pos.x as f32,
