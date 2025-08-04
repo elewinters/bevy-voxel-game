@@ -227,14 +227,19 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
     .with_inserted_indices(Indices::U32(new_indices))
 }
 
+// this function doesn't work fully properly because of the CHUNK_VERTICAL_SIZE being 1
+// tho im not sure why it cant work with it just being 1
+// but oh well, ill fix this later i think
 fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
     let neighbor_pos = match face {
-        VoxelFace::Front => *voxel_pos + IVec3::new(0, 0, 1),
-        VoxelFace::Back => *voxel_pos + IVec3::new(0, 0, -1),
-        VoxelFace::Right => *voxel_pos + IVec3::new(1, 0, 0),
-        VoxelFace::Left => *voxel_pos + IVec3::new(-1, 0, 0),
-        VoxelFace::Top => *voxel_pos + IVec3::new(0, 1, 0),
-        VoxelFace::Bottom => *voxel_pos + IVec3::new(0, -1, 0),
+        VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
+        VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
+        VoxelFace::Right => voxel_pos + IVec3::new(1, 0, 0),
+        VoxelFace::Left => voxel_pos + IVec3::new(-1, 0, 0),
+        VoxelFace::Top => voxel_pos + IVec3::new(0, 1, 0),
+        
+        // the bottom of all terrain is never seen so we just always return false here
+        VoxelFace::Bottom => return false,
     };
     
     !voxel_positions.contains(&neighbor_pos)
