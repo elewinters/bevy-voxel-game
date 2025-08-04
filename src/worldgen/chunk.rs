@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use bevy::prelude::*;
+use bevy::render::mesh::Indices;
 use bevy::color::palettes::css::*;
 
 use bevy_rapier3d::prelude::*;
@@ -43,6 +44,15 @@ const CHUNK_SIZE_VERTICAL: i32 = 1;
 const SCALE: f32 = 0.5; // number from 0.0 to 1.0
 const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
+
+enum VoxelFace {
+    Front = 0,
+    Back,
+    Right,
+    Left,
+    Top,
+    Bottom
+}
 
 /* ---------------- */
 /*      structs     */
@@ -128,10 +138,40 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     noise_y.round()
 }
 
+fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
+    // spawn mesh
+    let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
+
+    // get indices as Vec<u32>
+    let indices = match mesh.remove_indices().unwrap() {
+        Indices::U16(_) => panic!("expected U32 voxel indices, not U16"),
+        Indices::U32(vec) => vec,
+    };
+
+    // create new indices vector
+    let mut new_indices = Vec::new();
+
+    // append faces that we want to keep
+    for face in faces_to_keep {
+        let face_idx = face as usize * 6;
+        new_indices.extend_from_slice(&indices[face_idx..face_idx + 6]);
+    }
+
+    // insert the modified indices back
+    mesh.insert_indices(Indices::U32(new_indices));
+
+    mesh
+}
+
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
-fn startup(mut commands: Commands) {
+fn startup(
+    mut commands: Commands,
+
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
     noise.set_frequency(Some(SCALE));
@@ -141,6 +181,21 @@ fn startup(mut commands: Commands) {
 
     // triggers the ChunkChangedEvent so that we actually spawn somewhere
     commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
+
+    let faces_to_keep = vec![
+        VoxelFace::Front,
+        VoxelFace::Back,
+        VoxelFace::Right,
+        VoxelFace::Left,
+        VoxelFace::Bottom,
+    ];
+    let voxel_mesh = generate_voxel_mesh(faces_to_keep);
+
+    commands.spawn((
+        Transform::from_xyz(0.0, 10.0, 0.0),
+        Mesh3d(meshes.add(voxel_mesh)),
+        MeshMaterial3d(materials.add(Color::from(PURPLE)))
+    ));
 }
 
 fn spawn_single_chunk(
