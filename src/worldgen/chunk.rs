@@ -19,11 +19,12 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawn_chunk responds to SpawnChunkEvents
-        app.add_observer(spawn_chunk);
+        app.add_event::<SpawnChunkEvent>();
+        app.add_systems(Update, spawn_chunk);
 
         // and all of these respond to ChunkChangedEvents
-        app.add_observer(spawn_chunks);
-        app.add_observer(despawn_chunks);
+        app.add_event::<ChunkChangedEvent>();
+        app.add_systems(Update, (spawn_chunks, despawn_chunks));
     }
 }
 /* 
@@ -249,6 +250,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 /* ---------------- */
 fn startup(
     mut commands: Commands,
+    mut chunk_changed: EventWriter<ChunkChangedEvent>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -261,7 +263,7 @@ fn startup(
     commands.insert_resource(PerlinNoise(noise));
 
     // triggers the ChunkChangedEvent so that we actually spawn somewhere
-    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
+    chunk_changed.write(ChunkChangedEvent(ChunkPosition::new(0, 0)));
 
     // purple test cube
     let faces_to_keep = vec![
@@ -282,140 +284,141 @@ fn startup(
 
 // spawn a chunk at the specified position when a SpawnChunkEvent is fired
 fn spawn_chunk(
-    trigger: Trigger<SpawnChunkEvent>,
+    mut spawn_chunk: EventReader<SpawnChunkEvent>,
     perlin_noise: Res<PerlinNoise>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let chunk_pos = &trigger.event().0;
+    for chunk_pos in spawn_chunk.read() {
+        // hashset of voxel positions
+        let mut voxel_positions = HashSet::new();
 
-    // hashset of voxel positions
-    let mut voxel_positions = HashSet::new();
+        // determine position of each voxel and add to voxel_positions
+        for x in 0..CHUNK_SIZE_HORIZONTAL {
+            for _ in 0..CHUNK_SIZE_VERTICAL {
+                for z in 0..CHUNK_SIZE_HORIZONTAL {
+                    // determine position
+                    let voxel_position = Vec3::new(
+                        x as f32,
+                        generate_noise(
+                            &perlin_noise.0,
 
-    // determine position of each voxel and add to voxel_positions
-    for x in 0..CHUNK_SIZE_HORIZONTAL {
-        for _ in 0..CHUNK_SIZE_VERTICAL {
-            for z in 0..CHUNK_SIZE_HORIZONTAL {
-                // determine position
-                let voxel_position = Vec3::new(
-                    x as f32,
-                    generate_noise(
-                        &perlin_noise.0,
+                            x as f32 + chunk_pos.0.x as f32,
+                            z as f32 + chunk_pos.0.z as f32
+                        ), 
+                        z as f32
+                    );
 
-                        x as f32 + chunk_pos.x as f32,
-                        z as f32 + chunk_pos.z as f32
-                    ), 
-                    z as f32
-                );
-
-                // add to voxel_positions
-                voxel_positions.insert(voxel_position.as_ivec3());
+                    // add to voxel_positions
+                    voxel_positions.insert(voxel_position.as_ivec3());
+                }
             }
         }
+
+        // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
+        let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
+
+        // generate mesh based on voxels
+        for voxel_pos in &voxel_positions {
+            // determine which faces to keep for this mesh
+            let mut faces_to_keep = Vec::new();
+            
+            // check each face
+            if should_draw_face(VoxelFace::Front, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Front);
+            }
+            if should_draw_face(VoxelFace::Back, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Back);
+            }
+            if should_draw_face(VoxelFace::Right, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Right);
+            }
+            if should_draw_face(VoxelFace::Left, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Left);
+            }
+            if should_draw_face(VoxelFace::Top, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Top);
+            }
+            if should_draw_face(VoxelFace::Bottom, voxel_pos, &voxel_positions) {
+                faces_to_keep.push(VoxelFace::Bottom);
+            }
+
+            // merge mesh
+            let mut voxel_mesh = generate_voxel_mesh(faces_to_keep);
+            voxel_mesh.translate_by(voxel_pos.as_vec3());
+            
+            chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
+        }
+
+        // spawn chunk
+        commands.spawn((
+            Chunk,
+
+            Transform::from_xyz(
+                chunk_pos.0.x as f32,
+                0.0,
+                chunk_pos.0.z as f32
+            ),
+
+            Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
+
+            Mesh3d(meshes.add(chunk_mesh)),
+            MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+        ));
     }
-
-    // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
-    let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
-
-    // generate mesh based on voxels
-    for voxel_pos in &voxel_positions {
-        // determine which faces to keep for this mesh
-        let mut faces_to_keep = Vec::new();
-        
-        // check each face
-        if should_draw_face(VoxelFace::Front, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Front);
-        }
-        if should_draw_face(VoxelFace::Back, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Back);
-        }
-        if should_draw_face(VoxelFace::Right, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Right);
-        }
-        if should_draw_face(VoxelFace::Left, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Left);
-        }
-        if should_draw_face(VoxelFace::Top, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Top);
-        }
-        if should_draw_face(VoxelFace::Bottom, voxel_pos, &voxel_positions) {
-            faces_to_keep.push(VoxelFace::Bottom);
-        }
-
-        // merge mesh
-        let mut voxel_mesh = generate_voxel_mesh(faces_to_keep);
-        voxel_mesh.translate_by(voxel_pos.as_vec3());
-        
-        chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
-    }
-
-    // spawn chunk
-    commands.spawn((
-        Chunk,
-
-        Transform::from_xyz(
-            chunk_pos.x as f32,
-            0.0,
-            chunk_pos.z as f32
-        ),
-
-        Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
-
-        Mesh3d(meshes.add(chunk_mesh)),
-        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-    ));
 }
 
 // spawns new chunks based on the player's position
 fn spawn_chunks(
-    trigger: Trigger<ChunkChangedEvent>,
-    mut commands: Commands,
+    mut chunk_changed: EventReader<ChunkChangedEvent>,
+    mut spawn_chunk: EventWriter<SpawnChunkEvent>,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let current_chunk = &trigger.event().0;
+    for current_chunk in chunk_changed.read() {
+        /* generate a grid of chunk positions around the player  */
+        let new_chunks = generate_chunk_grid(&current_chunk.0);
 
-    /* generate a grid of chunk positions around the player  */
-    let new_chunks = generate_chunk_grid(current_chunk);
-
-    // get existing chunks
-    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
-    for transform in chunk_query {
-        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
-    }
-
-    // spawn new chunks based on the grid in new_chunks
-    for pos in new_chunks {
-        // as long as it doesn't exist already
-        if existing_chunks.contains(&pos) {
-            continue;
+        // get existing chunks
+        let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
+        for transform in chunk_query {
+            existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
         }
 
-        commands.trigger(SpawnChunkEvent(pos));
+        // spawn new chunks based on the grid in new_chunks
+        for pos in new_chunks {
+            // as long as it doesn't exist already
+            if existing_chunks.contains(&pos) {
+                continue;
+            }
+
+            spawn_chunk.write(SpawnChunkEvent(pos));
+        }
     }
 }
 
 fn despawn_chunks(
-    trigger: Trigger<ChunkChangedEvent>,
+    mut chunk_changed: EventReader<ChunkChangedEvent>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let current_chunk = &trigger.event().0;
-    let chunks = generate_chunk_grid(current_chunk);
+    for current_chunk in chunk_changed.read() {
+        let chunks = generate_chunk_grid(&current_chunk.0);
 
-    // check all existing chunks
-    for (entity, transform) in chunk_query {
-        // if this chunk isn't in the grid, despawn it
-        if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
-            commands.entity(entity).despawn();
+        // check all existing chunks
+        for (entity, transform) in chunk_query {
+            // if this chunk isn't in the grid, despawn it
+            if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }
 
 fn update_current_chunk(
-    mut commands: Commands,
+    mut chunk_changed: EventWriter<ChunkChangedEvent>,
     player_transform: Single<&Transform, With<player::Player>>,
 
     mut prev_chunk: Local<ChunkPosition>
@@ -431,6 +434,6 @@ fn update_current_chunk(
         prev_chunk.x = chunk_x;
         prev_chunk.z = chunk_z;
 
-        commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
+        chunk_changed.write(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
     }
 }
