@@ -45,14 +45,16 @@ const HEIGHT_VARIATION: f32 = 50.0;
 /* ---------------- */
 /*      structs     */
 /* ---------------- */
+
+// we use ints here because we want to be able to use a HashMap
 #[derive(Default, PartialEq)]
 struct ChunkPosition {
-    x: f32,
-    z: f32
+    x: i32,
+    z: i32
 }
 
 impl ChunkPosition {
-    fn new(x: f32, z: f32) -> Self {
+    fn new(x: i32, z: i32) -> Self {
         Self {x, z}
     }
 }
@@ -86,9 +88,9 @@ struct Chunk;
 /* ------------------ */
 
 // round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
-fn align_pos_to_chunk(x: f32) -> f32 {
+fn align_pos_to_chunk(x: f32) -> i32 {
     let chunk_size = CHUNK_SIZE_HORIZONTAL as f32;
-    (x / chunk_size).floor() * chunk_size
+    ((x / chunk_size).floor() * chunk_size) as i32
 }
 
 /*
@@ -101,8 +103,8 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
 
     for x in -render_half..=render_half {
         for z in -render_half..=render_half {
-            let chunk_x = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL) as f32;
-            let chunk_z = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL) as f32;
+            let chunk_x: i32 = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL);
+            let chunk_z: i32 = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL);
 
             new_chunks.push(ChunkPosition::new(chunk_x, chunk_z));
         }
@@ -129,7 +131,7 @@ fn startup(mut commands: Commands) {
     commands.insert_resource(PerlinNoise(noise));
 
     // triggers the ChunkChangedEvent so that we actually spawn somewhere
-    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0.0, 0.0)));
+    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
 }
 
 fn spawn_single_chunk(
@@ -146,9 +148,9 @@ fn spawn_single_chunk(
     let mut chunk = commands.spawn((
         Chunk,
         Transform::from_xyz(
-            chunk_pos.x,
+            chunk_pos.x as f32,
             0.0,
-            chunk_pos.z
+            chunk_pos.z as f32
         )
     ));
 
@@ -167,8 +169,8 @@ fn spawn_single_chunk(
                     generate_noise(
                         &perlin_noise.0,
 
-                        x as f32 + chunk_pos.x,
-                        z as f32 + chunk_pos.z
+                        x as f32 + chunk_pos.x as f32,
+                        z as f32 + chunk_pos.z as f32
                     ), 
                     z as f32
                 ));
@@ -203,7 +205,7 @@ fn spawn_chunks(
     // get existing chunks
     let mut existing_chunks = Vec::new();
     for transform in chunk_query {
-        existing_chunks.push(ChunkPosition::new(transform.translation.x, transform.translation.z));
+        existing_chunks.push(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
     }
 
     // spawn new chunks based on the grid in new_chunks
@@ -228,7 +230,7 @@ fn despawn_chunks(
     // check all existing chunks
     for (entity, transform) in chunk_query {
         // if this chunk isn't in the grid, despawn it
-        if !chunks.contains(&ChunkPosition::new(transform.translation.x, transform.translation.z)) {
+        if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
             commands.entity(entity).despawn();
         }
     }
