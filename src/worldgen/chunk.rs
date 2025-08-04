@@ -83,9 +83,14 @@ struct PerlinNoise(FastNoiseLite);
 /* ------------------- */
 /*      components     */
 /* ------------------- */
+
+// the hashset represents voxel position data
+// the player can destroy a block by aligning their mouse position to the voxel position and then removing the position from the voxels field
+// after that the mesh gets reconstructed based on the voxels field, meaning that the destroyed block wont be there anymore
 #[derive(Component)]
 #[require(Transform, Visibility)]
-struct Chunk;
+#[allow(dead_code)]
+struct Chunk(HashSet<IVec3>);
 
 /* ------------------ */
 /*      functions     */
@@ -148,28 +153,16 @@ fn spawn_single_chunk(
 ) {
     let chunk_pos = &trigger.event().0;
 
-    // chunk entity, we will append the mesh data later after we generate it
-    let mut chunk = commands.spawn((
-        Chunk,
-        Transform::from_xyz(
-            chunk_pos.x as f32,
-            0.0,
-            chunk_pos.z as f32
-        )
-    ));
+    // hashset of voxel positions
+    let mut voxel_positions = HashSet::new();
 
-    // the for loop below adds to this mesh to create one big mesh
-    let mut final_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
-
+    // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for _ in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
-                // create a mesh
-                let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
-                
-                // change its position to the one we want
-                mesh.translate_by(Vec3::new(
-                    x as f32, 
+                // determine position
+                let voxel_position = Vec3::new(
+                    x as f32,
                     generate_noise(
                         &perlin_noise.0,
 
@@ -177,19 +170,38 @@ fn spawn_single_chunk(
                         z as f32 + chunk_pos.z as f32
                     ), 
                     z as f32
-                ));
-                
-                // merge the generated mesh with the final mesh
-                final_mesh.merge(&mesh).expect("vertex attributes are incompatible with final mesh. this should NEVER happen under normal circumstances");
+                );
+
+                // add to voxel_positions
+                voxel_positions.insert(voxel_position.as_ivec3());
             }
         }
     }
 
-    // add mesh and collider to the chunk
-    chunk.with_child((
-        Collider::from_bevy_mesh(&final_mesh, &ComputedColliderShape::default()).expect("incorrect mesh passed to from_bevy_mesh, this will never happen"),
+    // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
+    let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
-        Mesh3d(meshes.add(final_mesh)),
+    // generate mesh based on voxels
+    for voxel_pos in &voxel_positions {
+        let mut voxel_mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
+        voxel_mesh.translate_by(voxel_pos.as_vec3());
+
+        chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
+    }
+
+    // spawn chunk
+    commands.spawn((
+        Chunk(voxel_positions),
+
+        Transform::from_xyz(
+            chunk_pos.x as f32,
+            0.0,
+            chunk_pos.z as f32
+        ),
+
+        Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
+
+        Mesh3d(meshes.add(chunk_mesh)),
         MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
     ));
 }
