@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 
@@ -46,8 +48,10 @@ const HEIGHT_VARIATION: f32 = 50.0;
 /*      structs     */
 /* ---------------- */
 
-// we use ints here because we want to be able to use a HashMap
-#[derive(Default, PartialEq)]
+// we use ints here because we want to be able to implement Hash in order to use HashSets
+// this also makes loads of other things easier
+// but at the end of the day this is just the actual world coordinate data for the chunk, we just cast it to f32 when we want to spawn it
+#[derive(Default, Eq, PartialEq, Hash)]
 struct ChunkPosition {
     x: i32,
     z: i32
@@ -97,8 +101,8 @@ fn align_pos_to_chunk(x: f32) -> i32 {
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
-fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
-    let mut new_chunks: Vec<ChunkPosition> = Vec::with_capacity(CHUNK_GRID_LEN);
+fn generate_chunk_grid(current_chunk: &ChunkPosition) -> HashSet<ChunkPosition> {
+    let mut new_chunks: HashSet<ChunkPosition> = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
 
     for x in -render_half..=render_half {
@@ -106,7 +110,7 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> Vec<ChunkPosition> {
             let chunk_x: i32 = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL);
             let chunk_z: i32 = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL);
 
-            new_chunks.push(ChunkPosition::new(chunk_x, chunk_z));
+            new_chunks.insert(ChunkPosition::new(chunk_x, chunk_z));
         }
     }
 
@@ -203,9 +207,9 @@ fn spawn_chunks(
     let new_chunks = generate_chunk_grid(current_chunk);
 
     // get existing chunks
-    let mut existing_chunks = Vec::new();
+    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
     for transform in chunk_query {
-        existing_chunks.push(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
+        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
     }
 
     // spawn new chunks based on the grid in new_chunks
@@ -215,7 +219,7 @@ fn spawn_chunks(
             continue;
         }
 
-        commands.trigger(SpawnChunkEvent(ChunkPosition::new(pos.x, pos.z)));
+        commands.trigger(SpawnChunkEvent(pos));
     }
 }
 
