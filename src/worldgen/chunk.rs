@@ -1,10 +1,11 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::render::mesh::VertexAttributeValues;
-use bevy::prelude::*;
 use bevy::render::mesh::Indices;
+
 use bevy::color::palettes::css::*;
+use bevy::prelude::*;
 
 use bevy_rapier3d::prelude::*;
 use fastnoise_lite::*;
@@ -142,7 +143,7 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
 
 // generates a voxel mesh based on the faces specified in faces_to_keep
 fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
-    let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
+    let mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
 
     // get all attributes of Cuboid mesh
     let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
@@ -226,6 +227,19 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
     .with_inserted_indices(Indices::U32(new_indices))
 }
 
+fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
+    let neighbor_pos = match face {
+        VoxelFace::Front => *voxel_pos + IVec3::new(0, 0, 1),
+        VoxelFace::Back => *voxel_pos + IVec3::new(0, 0, -1),
+        VoxelFace::Right => *voxel_pos + IVec3::new(1, 0, 0),
+        VoxelFace::Left => *voxel_pos + IVec3::new(-1, 0, 0),
+        VoxelFace::Top => *voxel_pos + IVec3::new(0, 1, 0),
+        VoxelFace::Bottom => *voxel_pos + IVec3::new(0, -1, 0),
+    };
+    
+    !voxel_positions.contains(&neighbor_pos)
+}
+
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
@@ -301,9 +315,33 @@ fn spawn_single_chunk(
 
     // generate mesh based on voxels
     for voxel_pos in &voxel_positions {
-        let mut voxel_mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
-        voxel_mesh.translate_by(voxel_pos.as_vec3());
+        // determine which faces to keep for this mesh
+        let mut faces_to_keep = Vec::new();
+        
+        // check each face
+        if should_draw_face(VoxelFace::Front, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Front);
+        }
+        if should_draw_face(VoxelFace::Back, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Back);
+        }
+        if should_draw_face(VoxelFace::Right, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Right);
+        }
+        if should_draw_face(VoxelFace::Left, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Left);
+        }
+        if should_draw_face(VoxelFace::Top, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Top);
+        }
+        if should_draw_face(VoxelFace::Bottom, voxel_pos, &voxel_positions) {
+            faces_to_keep.push(VoxelFace::Bottom);
+        }
 
+        // merge mesh
+        let mut voxel_mesh = generate_voxel_mesh(faces_to_keep);
+        voxel_mesh.translate_by(voxel_pos.as_vec3());
+        
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
     }
 
