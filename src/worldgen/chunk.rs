@@ -1,5 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 
+use bevy::asset::RenderAssetUsages;
+use bevy::render::mesh::VertexAttributeValues;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::color::palettes::css::*;
@@ -138,29 +140,90 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     noise_y.round()
 }
 
+// generates a voxel mesh based on the faces specified in faces_to_keep
 fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
-    // spawn mesh
     let mut mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
 
-    // get indices as Vec<u32>
-    let indices = match mesh.remove_indices().unwrap() {
-        Indices::U16(_) => panic!("expected U32 voxel indices, not U16"),
-        Indices::U32(vec) => vec,
+    // get all attributes of Cuboid mesh
+    let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
+        VertexAttributeValues::Float32x3(x) => x,
+        _ => panic!("positions are not in 32x3 format")
     };
 
-    // create new indices vector
+    let normals = match mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap() {
+        VertexAttributeValues::Float32x3(x) => x,
+        _ => panic!("normals are not in 32x3 format")
+    };
+
+    let uvs = match mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap() {
+        VertexAttributeValues::Float32x2(x) => x,
+        _ => panic!("UVs are not in 32x2 format")
+    };
+    
+    let indices = match mesh.indices().unwrap() {
+        Indices::U32(vec) => vec,
+        _ => panic!("expected U32 indices for mesh"),
+    };
+
+    // new vectors for filtered attributes
+    let mut new_positions = Vec::new();
+    let mut new_normals = Vec::new();
+    let mut new_uvs = Vec::new();
     let mut new_indices = Vec::new();
 
-    // append faces that we want to keep
+    // keep track of which vertices we're using
+    let mut vertex_map = Vec::new();
+    let mut next_vertex_id = 0;
+
+    // process each face we want to keep
     for face in faces_to_keep {
         let face_idx = face as usize * 6;
-        new_indices.extend_from_slice(&indices[face_idx..face_idx + 6]);
+        let face_vertices = &indices[face_idx..face_idx + 6];
+
+        // for each vertex in this face
+        for &old_idx in face_vertices {
+            let old_idx = old_idx as usize;
+            
+            // if we haven't processed this vertex yet
+            if vertex_map.get(old_idx).is_none() {
+                // add the vertex data
+                new_positions.push([
+                    positions[old_idx][0],
+                    positions[old_idx][1],
+                    positions[old_idx][2]
+                ]);
+                new_normals.push([
+                    normals[old_idx][0],
+                    normals[old_idx][1],
+                    normals[old_idx][2]
+                ]);
+                new_uvs.push([
+                    uvs[old_idx][0],
+                    uvs[old_idx][1]
+                ]);
+
+                // map old index to new index
+                while vertex_map.len() <= old_idx {
+                    vertex_map.push(None);
+                }
+                vertex_map[old_idx] = Some(next_vertex_id);
+                next_vertex_id += 1;
+            }
+
+            // add the new index
+            new_indices.push(vertex_map[old_idx].unwrap());
+        }
     }
 
-    // insert the modified indices back
-    mesh.insert_indices(Indices::U32(new_indices));
-
-    mesh
+    // create new mesh with filtered data
+    Mesh::new(
+        bevy::render::render_resource::PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, new_positions)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, new_normals)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, new_uvs)
+    .with_inserted_indices(Indices::U32(new_indices))
 }
 
 /* ---------------- */
