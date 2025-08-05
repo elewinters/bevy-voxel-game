@@ -36,6 +36,7 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
+// #tag constants
 
 // chunk generation constants
 const RENDER_DISTANCE: i32 = 16;
@@ -52,6 +53,8 @@ const HEIGHT_VARIATION: f32 = 50.0;
 /* -------------- */
 /*      enums     */
 /* -------------  */
+// #tag enums
+
 enum VoxelFace {
     Front = 0,
     Back,
@@ -64,6 +67,7 @@ enum VoxelFace {
 /* ---------------- */
 /*      structs     */
 /* ---------------- */
+// #tag structs
 
 // we use ints here because we want to be able to implement Hash in order to use HashSets
 // this also makes loads of other things easier
@@ -83,6 +87,8 @@ impl ChunkPosition {
 /* --------------- */
 /*      events     */
 /* --------------- */
+// #tag events
+
 #[derive(Event)]
 struct SpawnChunkEvent(ChunkPosition);
 
@@ -91,15 +97,19 @@ struct SpawnChunkEvent(ChunkPosition);
 #[derive(Event)]
 struct ChunkChangedEvent(ChunkPosition);
 
+
 /* ------------------ */
 /*      resources     */
 /* ------------------ */
+// #tag resources
+
 #[derive(Resource)]
 struct PerlinNoise(FastNoiseLite);
 
 /* ------------------- */
 /*      components     */
 /* ------------------- */
+// #tag components
 
 // the hashset represents voxel position data
 // the player can destroy a block by aligning their mouse position to the voxel position and then removing the position from the voxels field
@@ -111,6 +121,7 @@ struct Chunk;
 /* ------------------ */
 /*      functions     */
 /* ------------------ */
+// #tag functions
 
 // round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
 fn align_pos_to_chunk(x: f32) -> i32 {
@@ -248,6 +259,8 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
+// #tag systems
+
 fn startup(
     mut commands: Commands,
     mut chunk_changed: EventWriter<ChunkChangedEvent>,

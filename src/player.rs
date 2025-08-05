@@ -22,6 +22,8 @@ impl Plugin for PlayerPlugin {
 /* ------------------ */
 /*      constants     */
 /* ------------------ */
+// #tag constants
+
 const MOUSE_SENSITIVITY: f32 = 0.3;
 const MOVEMENT_SPEED: f32 = 8.0;
 const JUMP_POWER: f32 = 12.0;
@@ -30,6 +32,8 @@ const GRAVITY: f32 = -9.81;
 /* ------------------- */
 /*      components     */
 /* ------------------- */
+// #tag components
+
 #[derive(Component)]
 pub struct Player {
     fly: bool
@@ -38,6 +42,8 @@ pub struct Player {
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
+// #tag systems
+
 pub fn spawn_player(mut commands: Commands) {
     commands.spawn((
         Player { fly: false },

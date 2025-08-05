@@ -13,6 +13,8 @@ mod worldgen;
 /* ------------------ */
 /*      functions     */
 /* ------------------ */
+// #tag functions
+
 fn main() {
     App::new()
         .add_plugins((
