@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use std::collections::{HashSet, HashMap};
 
 use bevy::asset::RenderAssetUsages;
@@ -47,7 +48,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 16;
+const RENDER_DISTANCE: i32 = 32;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -308,11 +309,14 @@ fn spawn_chunk(
     mut spawn_chunk: EventReader<SpawnChunkEvent>,
     perlin_noise: Res<PerlinNoise>,
 
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    par_commands: ParallelCommands,
+    meshes: ResMut<Assets<Mesh>>,
+    materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for chunk_pos in spawn_chunk.read() {
+    let meshes = Arc::new(Mutex::new(meshes));
+    let materials = Arc::new(Mutex::new(materials));
+
+    spawn_chunk.par_read().for_each(|chunk_pos| {
         // hashset of voxel positions
         let mut voxel_positions = HashSet::new();
 
@@ -374,31 +378,38 @@ fn spawn_chunk(
         }
 
         // spawn chunk
-        commands.spawn((
-            Chunk,
+        par_commands.command_scope(|mut commands| {
+            let mut meshes_mtx = meshes.lock().unwrap();
+            let mut materials_mtx = materials.lock().unwrap();
 
-            Transform::from_xyz(
-                chunk_pos.0.x as f32,
-                0.0,
-                chunk_pos.0.z as f32
-            ),
+            commands.spawn((
+                Chunk,
 
-            Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
+                Transform::from_xyz(
+                    chunk_pos.0.x as f32,
+                    0.0,
+                    chunk_pos.0.z as f32
+                ),
 
-            Mesh3d(meshes.add(chunk_mesh)),
-            MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-        ));
-    }
+                Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
+
+                Mesh3d(meshes_mtx.add(chunk_mesh)),
+                MeshMaterial3d(materials_mtx.add(Color::from(LAWN_GREEN))),
+            ));
+        });
+    });
 }
 
 // spawns new chunks based on the player's position
 fn spawn_chunks(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
-    mut spawn_chunk: EventWriter<SpawnChunkEvent>,
+    spawn_chunk: EventWriter<SpawnChunkEvent>,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    for current_chunk in chunk_changed.read() {
+    let spawn_chunk = Arc::new(Mutex::new(spawn_chunk));
+
+    chunk_changed.par_read().for_each(|current_chunk| {
         /* generate a grid of chunk positions around the player  */
         let new_chunks = generate_chunk_grid(&current_chunk.0);
 
@@ -415,27 +426,30 @@ fn spawn_chunks(
                 continue;
             }
 
-            spawn_chunk.write(SpawnChunkEvent(pos));
+            let mut data = spawn_chunk.lock().unwrap();
+            data.write(SpawnChunkEvent(pos));
         }
-    }
+    });
 }
 
 fn despawn_chunks(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
-    mut commands: Commands,
+    par_commands: ParallelCommands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    for current_chunk in chunk_changed.read() {
+    chunk_changed.par_read().for_each(|current_chunk| {
         let chunks = generate_chunk_grid(&current_chunk.0);
 
         // check all existing chunks
         for (entity, transform) in chunk_query {
             // if this chunk isn't in the grid, despawn it
             if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
-                commands.entity(entity).despawn();
+                par_commands.command_scope(|mut commands| {
+                    commands.entity(entity).despawn();
+                });
             }
         }
-    }
+    });
 }
 
 fn update_current_chunk(
