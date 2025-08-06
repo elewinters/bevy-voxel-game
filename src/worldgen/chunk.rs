@@ -31,6 +31,14 @@ impl Plugin for ChunkPlugin {
     TODO:
         - fix face culling (later though)
         - add multithreading to chunk generation
+
+        MAYBE:
+        - frustum culling
+        - occlusion culling
+        - some simple & fast greedy meshing
+        - LODs (probably not)
+        - data compression with funky bitwise stuff
+        - speed up chunk generation
 */
 
 /* ------------------ */

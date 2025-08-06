@@ -12,6 +12,7 @@ impl Plugin for WindowPlugin {
 // center the window
 fn window_setup(mut window: Single<&mut Window>) {
     window.position = WindowPosition::Centered(MonitorSelection::Current);
+    window.present_mode = PresentMode::AutoNoVsync;
 }
 
 // enables us to unlock the cursor when we press esc
