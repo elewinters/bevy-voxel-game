@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::collections::{HashSet, HashMap};
 
 use bevy::asset::RenderAssetUsages;
@@ -313,8 +313,8 @@ fn spawn_chunk(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let meshes = Arc::new(Mutex::new(meshes));
-    let materials = Arc::new(Mutex::new(materials));
+    let meshes = Mutex::new(meshes);
+    let materials = Mutex::new(materials);
 
     spawn_chunk.par_read().for_each(|chunk_pos| {
         // hashset of voxel positions
@@ -407,7 +407,7 @@ fn spawn_chunks(
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let spawn_chunk = Arc::new(Mutex::new(spawn_chunk));
+    let spawn_chunk = Mutex::new(spawn_chunk);
 
     chunk_changed.par_read().for_each(|current_chunk| {
         /* generate a grid of chunk positions around the player  */
@@ -419,6 +419,8 @@ fn spawn_chunks(
             existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
         }
 
+        let mut spawn_chunk_mtx = spawn_chunk.lock().unwrap();
+
         // spawn new chunks based on the grid in new_chunks
         for pos in new_chunks {
             // as long as it doesn't exist already
@@ -426,8 +428,7 @@ fn spawn_chunks(
                 continue;
             }
 
-            let mut data = spawn_chunk.lock().unwrap();
-            data.write(SpawnChunkEvent(pos));
+            spawn_chunk_mtx.write(SpawnChunkEvent(pos));
         }
     });
 }
