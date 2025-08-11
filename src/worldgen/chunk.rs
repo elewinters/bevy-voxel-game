@@ -27,7 +27,7 @@ impl Plugin for ChunkPlugin {
 
         // and all of these respond to ChunkChangedEvents
         app.add_event::<ChunkChangedEvent>();
-        app.add_systems(Update, (spawn_chunks, despawn_chunks));
+        app.add_systems(Update, (spawn_chunks, handle_chunks_tasks, despawn_chunks));
     }
 }
 /* 
@@ -131,6 +131,9 @@ struct Chunk;
 
 #[derive(Component)]
 struct ChunkTask(Task<(ChunkPosition, Mesh)>);
+
+#[derive(Component)]
+struct ChunksTask(Task<Vec<SpawnChunkEvent>>);
 
 /* ------------------ */
 /*      functions     */
@@ -405,6 +408,7 @@ fn handle_chunk_tasks(
 ) {
     for (entity, mut task) in &mut chunk_tasks {
         if let Some((chunk_pos, chunk_mesh)) = block_on(future::poll_once(&mut task.0)) {
+            println!("blocked!");
             commands.entity(entity).insert((
                 Chunk,
 
@@ -422,6 +426,8 @@ fn handle_chunk_tasks(
 
             // task is complete, so remove task component from entity
             commands.entity(entity).remove::<ChunkTask>();
+
+            println!("unblocked");
         }
     }
 }
@@ -429,34 +435,58 @@ fn handle_chunk_tasks(
 // spawns new chunks based on the player's position
 fn spawn_chunks(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
-    spawn_chunk: EventWriter<SpawnChunkEvent>,
-
     chunk_query: Query<&Transform, With<Chunk>>,
+    par_commands: ParallelCommands,
 ) {
-    let spawn_chunk = Mutex::new(spawn_chunk);
+    let thread_pool = AsyncComputeTaskPool::get();
 
     chunk_changed.par_read().for_each(|current_chunk| {
-        /* generate a grid of chunk positions around the player  */
-        let new_chunks = generate_chunk_grid(&current_chunk.0);
-
-        // get existing chunks
+        let current_chunk = Arc::new(current_chunk.0.clone());
         let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
         for transform in chunk_query {
-            existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
+            existing_chunks.insert(ChunkPosition::new(
+                transform.translation.x as i32, 
+                transform.translation.z as i32
+            ));
         }
 
-        let mut spawn_chunk_mtx = spawn_chunk.lock().unwrap();
+        let task = thread_pool.spawn(async move {
+            /* generate a grid of chunk positions around the player  */
+            let new_chunks = generate_chunk_grid(&current_chunk);
+            let mut events = Vec::new();
 
-        // spawn new chunks based on the grid in new_chunks
-        for pos in new_chunks {
-            // as long as it doesn't exist already
-            if existing_chunks.contains(&pos) {
-                continue;
+            // spawn new chunks based on the grid in new_chunks
+            for pos in new_chunks {
+                // as long as it doesn't exist already
+                if existing_chunks.contains(&pos) {
+                    continue;
+                }
+
+                events.push(SpawnChunkEvent(pos));
             }
 
-            spawn_chunk_mtx.write(SpawnChunkEvent(pos));
-        }
+            events
+        });
+
+        par_commands.command_scope(|mut commands| {
+            commands.spawn(ChunksTask(task));
+        });
     });
+}
+
+fn handle_chunks_tasks(
+    mut commands: Commands,
+    mut event: EventWriter<SpawnChunkEvent>,
+    mut chunks_tasks: Query<(Entity, &mut ChunksTask)>,
+) {
+    for (entity, mut task) in &mut chunks_tasks {
+        if let Some(events) = block_on(future::poll_once(&mut task.0)) {
+            event.write_batch(events);
+
+            // task is complete, so remove task component from entity
+            commands.entity(entity).remove::<ChunksTask>();
+        }
+    }
 }
 
 fn despawn_chunks(
