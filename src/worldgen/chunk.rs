@@ -23,11 +23,11 @@ impl Plugin for ChunkPlugin {
 
         // spawn_chunk responds to SpawnChunkEvents
         app.add_event::<SpawnChunksEvent>();
-        app.add_systems(Update, (spawn_chunk_tasks, handle_chunk_tasks));
+        app.add_systems(Update, (spawn_chunks_tasks, handle_chunks_tasks));
 
         // and all of these respond to ChunkChangedEvents
         app.add_event::<ChunkChangedEvent>();
-        app.add_systems(Update, (spawn_chunks, despawn_chunks));
+        app.add_systems(Update, (spawn_chunks_around_player, despawn_chunks));
     }
 }
 /* 
@@ -374,27 +374,28 @@ fn startup(
     ));
 }
 
-// spawn a chunk at the specified position when a SpawnChunksEvent is fired
-fn spawn_chunk_tasks(
+// reacts to the SpawnChunksEvent and spawns a Task that computes all the chunks with the given chunk positions
+// we allow this Task to run over several frames, when that task is complete we handle it in handle_chunks_tasks, which actually spawns the chunk
+fn spawn_chunks_tasks(
     mut spawn_chunks: EventReader<SpawnChunksEvent>,
     noise: Res<Noise>,
-
     par_commands: ParallelCommands,
 ) {
     let thread_pool = AsyncComputeTaskPool::get();
 
     spawn_chunks.par_read().for_each(|event| {
+        // arcs needed here cuz of borrow checker
         let noise = Arc::clone(&noise.0);
         let chunk_positions = Arc::new(event.0.clone());
         
+        // spawn task that computes the specified chunks, returning their positions, meshes and colliders
         let task = thread_pool.spawn(async move {
-            println!("computing...");
             let mut positions = Vec::new();
             let mut meshes = Vec::new();
             let mut colliders = Vec::new();
 
             for chunk_pos in chunk_positions.iter() {
-                let (position, mesh) = compute_chunk(&noise, &chunk_pos);
+                let (position, mesh) = compute_chunk(&noise, chunk_pos);
 
                 positions.push(position);
                 colliders.push(Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::default()).expect("invalid mesh"));
@@ -410,7 +411,8 @@ fn spawn_chunk_tasks(
     });
 }
 
-fn handle_chunk_tasks(
+// we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
+fn handle_chunks_tasks(
     mut commands: Commands,
     mut tasks: Query<(Entity, &mut SpawnChunksTask)>,
 
@@ -419,8 +421,9 @@ fn handle_chunk_tasks(
 ) {
     for (entity, mut task) in &mut tasks {
         if let Some((chunk_positions, chunk_meshes, chunk_colliders)) = block_on(future::poll_once(&mut task.0)) {
-            println!("computed!");
+            // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::new();
+
             for ((position, mesh), collider) in chunk_positions.iter().zip(chunk_meshes).zip(chunk_colliders) {
                 batch.push((
                     Chunk,
@@ -447,7 +450,8 @@ fn handle_chunk_tasks(
 }
 
 // spawns new chunks based on the player's position
-fn spawn_chunks(
+// this fires the SpawnChunksEvent to accomplish that
+fn spawn_chunks_around_player(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
     spawn_chunk: EventWriter<SpawnChunksEvent>,
 
@@ -465,12 +469,10 @@ fn spawn_chunks(
             existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
         }
 
-
+        // add new chunk positions to vector based on the grid in new_chunks
         let mut positions = Vec::new();
-
-        // spawn new chunks based on the grid in new_chunks
         for pos in new_chunks {
-            // as long as it doesn't exist already
+            // as long as a chunk with that position doesn't exist already
             if existing_chunks.contains(&pos) {
                 continue;
             }
@@ -478,6 +480,7 @@ fn spawn_chunks(
             positions.push(pos);
         }
 
+        // spawn chunks based on positions vector
         let mut spawn_chunks_mtx = spawn_chunks.lock().unwrap();
         spawn_chunks_mtx.write(SpawnChunksEvent(positions));
     });
