@@ -95,6 +95,13 @@ impl ChunkPosition {
     }
 }
 
+#[derive(Default)]
+struct ChunkTaskData {
+    positions: Vec<ChunkPosition>,
+    meshes: Vec<Mesh>,
+    colliders: Vec<Collider>
+}
+
 /* --------------- */
 /*      events     */
 /* --------------- */
@@ -130,7 +137,7 @@ struct Noise(Arc<FastNoiseLite>);
 struct Chunk;
 
 #[derive(Component)]
-struct SpawnChunksTask(Task<(Vec<ChunkPosition>, Vec<Mesh>, Vec<Collider>)>);
+struct SpawnChunksTask(Task<ChunkTaskData>);
 
 /* ------------------ */
 /*      functions     */
@@ -390,19 +397,17 @@ fn spawn_chunks_tasks(
         
         // spawn task that computes the specified chunks, returning their positions, meshes and colliders
         let task = thread_pool.spawn(async move {
-            let mut positions = Vec::new();
-            let mut meshes = Vec::new();
-            let mut colliders = Vec::new();
+            let mut data = ChunkTaskData::default();
 
             for chunk_pos in chunk_positions.iter() {
                 let (position, mesh) = compute_chunk(&noise, chunk_pos);
 
-                positions.push(position);
-                colliders.push(Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::default()).expect("invalid mesh"));
-                meshes.push(mesh);
+                data.positions.push(position);
+                data.colliders.push(Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::default()).expect("invalid mesh"));
+                data.meshes.push(mesh);
             }
 
-            (positions, meshes, colliders)
+            data
         });
 
         par_commands.command_scope(|mut commands| {
@@ -420,11 +425,11 @@ fn handle_chunks_tasks(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, mut task) in &mut tasks {
-        if let Some((chunk_positions, chunk_meshes, chunk_colliders)) = block_on(future::poll_once(&mut task.0)) {
+        if let Some(chunk) = block_on(future::poll_once(&mut task.0)) {
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::new();
 
-            for ((position, mesh), collider) in chunk_positions.iter().zip(chunk_meshes).zip(chunk_colliders) {
+            for ((position, mesh), collider) in chunk.positions.iter().zip(chunk.meshes).zip(chunk.colliders) {
                 batch.push((
                     Chunk,
 
