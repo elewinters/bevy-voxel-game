@@ -277,7 +277,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
     !voxel_positions.contains(&neighbor_pos)
 }
 
-fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (ChunkPosition, Mesh) {
+fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Mesh {
     // hashset of voxel positions
     let mut voxel_positions = HashSet::new();
 
@@ -338,7 +338,7 @@ fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (ChunkPosi
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
     }
 
-    (chunk_pos.clone(), chunk_mesh)
+    chunk_mesh
 }
 
 /* ---------------- */
@@ -400,9 +400,9 @@ fn spawn_chunks_tasks(
             let mut data = ChunkTaskData::default();
 
             for chunk_pos in chunk_positions.iter() {
-                let (position, mesh) = compute_chunk(&noise, chunk_pos);
+                let mesh = compute_chunk(&noise, chunk_pos);
 
-                data.positions.push(position);
+                data.positions.push(chunk_pos.clone());
                 data.colliders.push(Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::default()).expect("invalid mesh"));
                 data.meshes.push(mesh);
             }
