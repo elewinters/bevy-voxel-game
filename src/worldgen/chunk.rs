@@ -50,7 +50,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 32;
+const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -421,19 +421,19 @@ fn handle_chunk_tasks(
         if let Some((chunk_positions, chunk_meshes, chunk_colliders)) = block_on(future::poll_once(&mut task.0)) {
             println!("computed!");
             let mut batch = Vec::new();
-            for (position, collider) in chunk_positions.iter().zip(chunk_meshes).zip(chunk_colliders) {
+            for ((position, mesh), collider) in chunk_positions.iter().zip(chunk_meshes).zip(chunk_colliders) {
                 batch.push((
                     Chunk,
 
                     Transform::from_xyz(
-                        position.0.x as f32,
+                        position.x as f32,
                         0.0,
-                        position.0.z as f32
+                        position.z as f32
                     ),
 
                     collider,
 
-                    Mesh3d(meshes.add(position.1)),
+                    Mesh3d(meshes.add(mesh)),
                     MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
                 ));
             }
