@@ -125,9 +125,9 @@ fn move_player(
     
     // make the player faster when flying
     if player.fly {
-        input.x *= 4.0;
+        input.x *= 75.0;
         input.y *= 2.0;
-        input.z *= 4.0;
+        input.z *= 75.0;
     }
 
     // this is where we actually move the player

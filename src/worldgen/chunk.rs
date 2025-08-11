@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap, VecDeque};
 
 use bevy::tasks::{block_on, futures_lite::future, AsyncComputeTaskPool, Task};
 
@@ -28,6 +28,8 @@ impl Plugin for ChunkPlugin {
         // and all of these respond to ChunkChangedEvents
         app.add_event::<ChunkChangedEvent>();
         app.add_systems(Update, (spawn_chunks_around_player, despawn_chunks));
+
+        app.init_resource::<ChunkQueue>();
     }
 }
 /* 
@@ -124,6 +126,9 @@ struct ChunkChangedEvent(ChunkPosition);
 #[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
 
+#[derive(Resource, Default)]
+struct ChunkQueue(VecDeque<Task<ChunkTaskData>>);
+
 /* ------------------- */
 /*      components     */
 /* ------------------- */
@@ -135,9 +140,6 @@ struct Noise(Arc<FastNoiseLite>);
 #[derive(Component)]
 #[require(Transform, Visibility)]
 struct Chunk;
-
-#[derive(Component)]
-struct SpawnChunksTask(Task<ChunkTaskData>);
 
 /* ------------------ */
 /*      functions     */
@@ -389,12 +391,12 @@ fn startup(
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunks_tasks, which actually spawns the chunk
 fn spawn_chunks_tasks(
     mut spawn_chunks: EventReader<SpawnChunksEvent>,
+    mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
-    par_commands: ParallelCommands,
 ) {
     let thread_pool = AsyncComputeTaskPool::get();
 
-    spawn_chunks.par_read().for_each(|event| {
+    for event in spawn_chunks.read() {
         // arcs needed here cuz of borrow checker
         let noise = Arc::clone(&noise.0);
         let chunk_positions = Arc::new(event.0.clone());
@@ -414,22 +416,22 @@ fn spawn_chunks_tasks(
             data
         });
 
-        par_commands.command_scope(|mut commands| {
-            commands.spawn(SpawnChunksTask(task));
-        });
-    });
+        queue.0.push_back(task);
+    }
 }
 
 // we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
 fn handle_chunks_tasks(
     mut commands: Commands,
-    mut tasks: Query<(Entity, &mut SpawnChunksTask)>,
+    mut queue: ResMut<ChunkQueue>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, mut task) in &mut tasks {
-        if let Some(chunk) = block_on(future::poll_once(&mut task.0)) {
+    queue.0.retain_mut(|mut task| {
+        let mut retain = true;
+
+        if let Some(chunk) = block_on(future::poll_once(task)) {
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::new();
 
@@ -451,11 +453,11 @@ fn handle_chunks_tasks(
             }
 
             commands.spawn_batch(batch);
-
-            // task is complete, so remove task component from entity
-            commands.entity(entity).remove::<SpawnChunksTask>();
+            retain = false;
         }
-    }
+
+        retain
+    });
 }
 
 // spawns new chunks based on the player's position
