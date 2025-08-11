@@ -22,12 +22,12 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawn_chunk responds to SpawnChunkEvents
-        app.add_event::<SpawnChunkEvent>();
+        app.add_event::<SpawnChunksEvent>();
         app.add_systems(Update, (spawn_chunk_tasks, handle_chunk_tasks));
 
         // and all of these respond to ChunkChangedEvents
         app.add_event::<ChunkChangedEvent>();
-        app.add_systems(Update, (spawn_chunks, handle_chunks_tasks, despawn_chunks));
+        app.add_systems(Update, (spawn_chunks, despawn_chunks));
     }
 }
 /* 
@@ -101,7 +101,7 @@ impl ChunkPosition {
 // #tag events
 
 #[derive(Event)]
-struct SpawnChunkEvent(ChunkPosition);
+struct SpawnChunksEvent(Vec<ChunkPosition>);
 
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
@@ -130,10 +130,7 @@ struct Noise(Arc<FastNoiseLite>);
 struct Chunk;
 
 #[derive(Component)]
-struct ChunkTask(Task<(ChunkPosition, Mesh)>);
-
-#[derive(Component)]
-struct ChunksTask(Task<Vec<SpawnChunkEvent>>);
+struct SpawnChunksTask(Task<(Vec<ChunkPosition>, Vec<Mesh>, Vec<Collider>)>);
 
 /* ------------------ */
 /*      functions     */
@@ -365,6 +362,7 @@ fn startup(
         VoxelFace::Back,
         VoxelFace::Right,
         VoxelFace::Left,
+        VoxelFace::Top,
         VoxelFace::Bottom,
     ];
     let voxel_mesh = generate_voxel_mesh(faces_to_keep);
@@ -376,58 +374,74 @@ fn startup(
     ));
 }
 
-// spawn a chunk at the specified position when a SpawnChunkEvent is fired
+// spawn a chunk at the specified position when a SpawnChunksEvent is fired
 fn spawn_chunk_tasks(
-    mut spawn_chunk: EventReader<SpawnChunkEvent>,
+    mut spawn_chunks: EventReader<SpawnChunksEvent>,
     noise: Res<Noise>,
 
     par_commands: ParallelCommands,
 ) {
     let thread_pool = AsyncComputeTaskPool::get();
 
-    spawn_chunk.par_read().for_each(|chunk_pos| {
+    spawn_chunks.par_read().for_each(|event| {
         let noise = Arc::clone(&noise.0);
-        let chunk_pos = Arc::new(chunk_pos.0.clone());
+        let chunk_positions = Arc::new(event.0.clone());
         
         let task = thread_pool.spawn(async move {
-            compute_chunk(&noise, &chunk_pos)
+            println!("computing...");
+            let mut positions = Vec::new();
+            let mut meshes = Vec::new();
+            let mut colliders = Vec::new();
+
+            for chunk_pos in chunk_positions.iter() {
+                let (position, mesh) = compute_chunk(&noise, &chunk_pos);
+
+                positions.push(position);
+                colliders.push(Collider::from_bevy_mesh(&mesh, &ComputedColliderShape::default()).expect("invalid mesh"));
+                meshes.push(mesh);
+            }
+
+            (positions, meshes, colliders)
         });
 
         par_commands.command_scope(|mut commands| {
-            commands.spawn(ChunkTask(task));
+            commands.spawn(SpawnChunksTask(task));
         });
     });
 }
 
 fn handle_chunk_tasks(
     mut commands: Commands,
-    mut chunk_tasks: Query<(Entity, &mut ChunkTask)>,
+    mut tasks: Query<(Entity, &mut SpawnChunksTask)>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, mut task) in &mut chunk_tasks {
-        if let Some((chunk_pos, chunk_mesh)) = block_on(future::poll_once(&mut task.0)) {
-            println!("blocked!");
-            commands.entity(entity).insert((
-                Chunk,
+    for (entity, mut task) in &mut tasks {
+        if let Some((chunk_positions, chunk_meshes, chunk_colliders)) = block_on(future::poll_once(&mut task.0)) {
+            println!("computed!");
+            let mut batch = Vec::new();
+            for (position, collider) in chunk_positions.iter().zip(chunk_meshes).zip(chunk_colliders) {
+                batch.push((
+                    Chunk,
 
-                Transform::from_xyz(
-                    chunk_pos.x as f32,
-                    0.0,
-                    chunk_pos.z as f32
-                ),
+                    Transform::from_xyz(
+                        position.0.x as f32,
+                        0.0,
+                        position.0.z as f32
+                    ),
 
-                Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh"),
+                    collider,
 
-                Mesh3d(meshes.add(chunk_mesh)),
-                MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-            ));
+                    Mesh3d(meshes.add(position.1)),
+                    MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                ));
+            }
+
+            commands.spawn_batch(batch);
 
             // task is complete, so remove task component from entity
-            commands.entity(entity).remove::<ChunkTask>();
-
-            println!("unblocked");
+            commands.entity(entity).remove::<SpawnChunksTask>();
         }
     }
 }
@@ -435,58 +449,38 @@ fn handle_chunk_tasks(
 // spawns new chunks based on the player's position
 fn spawn_chunks(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
+    spawn_chunk: EventWriter<SpawnChunksEvent>,
+
     chunk_query: Query<&Transform, With<Chunk>>,
-    par_commands: ParallelCommands,
 ) {
-    let thread_pool = AsyncComputeTaskPool::get();
+    let spawn_chunks = Mutex::new(spawn_chunk);
 
     chunk_changed.par_read().for_each(|current_chunk| {
-        let current_chunk = Arc::new(current_chunk.0.clone());
+        /* generate a grid of chunk positions around the player  */
+        let new_chunks = generate_chunk_grid(&current_chunk.0);
+
+        // get existing chunks
         let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
         for transform in chunk_query {
-            existing_chunks.insert(ChunkPosition::new(
-                transform.translation.x as i32, 
-                transform.translation.z as i32
-            ));
+            existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
         }
 
-        let task = thread_pool.spawn(async move {
-            /* generate a grid of chunk positions around the player  */
-            let new_chunks = generate_chunk_grid(&current_chunk);
-            let mut events = Vec::new();
 
-            // spawn new chunks based on the grid in new_chunks
-            for pos in new_chunks {
-                // as long as it doesn't exist already
-                if existing_chunks.contains(&pos) {
-                    continue;
-                }
+        let mut positions = Vec::new();
 
-                events.push(SpawnChunkEvent(pos));
+        // spawn new chunks based on the grid in new_chunks
+        for pos in new_chunks {
+            // as long as it doesn't exist already
+            if existing_chunks.contains(&pos) {
+                continue;
             }
 
-            events
-        });
-
-        par_commands.command_scope(|mut commands| {
-            commands.spawn(ChunksTask(task));
-        });
-    });
-}
-
-fn handle_chunks_tasks(
-    mut commands: Commands,
-    mut event: EventWriter<SpawnChunkEvent>,
-    mut chunks_tasks: Query<(Entity, &mut ChunksTask)>,
-) {
-    for (entity, mut task) in &mut chunks_tasks {
-        if let Some(events) = block_on(future::poll_once(&mut task.0)) {
-            event.write_batch(events);
-
-            // task is complete, so remove task component from entity
-            commands.entity(entity).remove::<ChunksTask>();
+            positions.push(pos);
         }
-    }
+
+        let mut spawn_chunks_mtx = spawn_chunks.lock().unwrap();
+        spawn_chunks_mtx.write(SpawnChunksEvent(positions));
+    });
 }
 
 fn despawn_chunks(
