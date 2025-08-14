@@ -36,6 +36,11 @@ impl Plugin for ChunkPlugin {
     TODO:
         - fix face culling (later though)
 
+        - speed up chunk generation by parallelizing the for loop that checks should_draw_face in compute_chunk with par_splat_map
+        this will require the use of a Vec instead of a HashSet, so this will be a part of a larger rework of compute_chunk
+        that makes it so that instead of passing in the entire voxel positions HashSet to should_draw_face, and then that checking if the position is inside the hashset
+        instead we will just send the 6 nearest positions to should_draw_face, which will not only speed things up but allow us to use regular Vecs instead of IVecs
+
         MAYBE:
         - frustum culling
         - occlusion culling
