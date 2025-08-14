@@ -110,7 +110,7 @@ struct ChunkTaskData {
 // #tag events
 
 #[derive(Event)]
-struct SpawnChunksEvent(Vec<ChunkPosition>);
+struct SpawnChunksEvent(HashSet<ChunkPosition>);
 
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
@@ -457,7 +457,7 @@ fn handle_chunks_tasks(
 }
 
 // spawns new chunks based on the player's position
-// this fires the SpawnChunksEvent to accomplish that
+// triggers the SpawnChunksEvent
 fn spawn_chunks_around_player(
     trigger: Trigger<ChunkChangedEvent>,
     mut commands: Commands,
@@ -465,7 +465,7 @@ fn spawn_chunks_around_player(
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let new_chunks = generate_chunk_grid(&trigger.event().0);
+    let mut new_chunks = generate_chunk_grid(&trigger.event().0);
 
     // get existing chunks
     let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
@@ -473,19 +473,11 @@ fn spawn_chunks_around_player(
         existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
     }
 
-    // add new chunk positions to vector based on the grid in new_chunks
-    let mut positions = Vec::new();
-    for pos in new_chunks {
-        // as long as a chunk with that position doesn't exist already
-        if existing_chunks.contains(&pos) {
-            continue;
-        }
-
-        positions.push(pos);
-    }
+    // only keep the positions that dont exist yet, so that we dont spawn new chunks in a place where a chunk already exists
+    new_chunks.retain(|pos| !existing_chunks.contains(pos));
 
     // spawn chunks based on positions vector
-    commands.trigger(SpawnChunksEvent(positions));
+    commands.trigger(SpawnChunksEvent(new_chunks));
 }
 
 fn despawn_chunks(
