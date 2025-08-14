@@ -20,12 +20,12 @@ fn cursor_locking_on_esc(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
 
-    mut switch: Local<bool>
+    mut locked: Local<bool>
 ) {
     if keys.just_pressed(KeyCode::Escape) {
-        *switch = !(*switch);
+        *locked = !(*locked);
 
-        if *switch {
+        if *locked {
             commands.run_system_cached(cursor_unlock);
         }
         else {
