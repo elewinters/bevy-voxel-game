@@ -99,7 +99,7 @@ impl ChunkPosition {
 
 #[derive(Default)]
 struct ChunkTaskData {
-    positions: Vec<ChunkPosition>,
+    transforms: Vec<Transform>,
     meshes: Vec<Mesh>,
     colliders: Vec<Collider>
 }
@@ -404,7 +404,12 @@ fn spawn_chunks_tasks(
         for chunk_pos in chunk_positions.iter() {
             let (mesh, collider) = compute_chunk(&noise, chunk_pos);
 
-            data.positions.push(chunk_pos.clone());
+            data.transforms.push(Transform::from_xyz(
+                chunk_pos.x as f32,
+                0.0,
+                chunk_pos.z as f32
+            ));
+
             data.meshes.push(mesh);
             data.colliders.push(collider);
         }
@@ -432,16 +437,11 @@ fn handle_chunks_tasks(
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::new();
 
-            for ((position, mesh), collider) in chunk.positions.iter().zip(chunk.meshes).zip(chunk.colliders) {
+            for ((transform, mesh), collider) in chunk.transforms.into_iter().zip(chunk.meshes).zip(chunk.colliders) {
                 batch.push((
                     Chunk,
 
-                    Transform::from_xyz(
-                        position.x as f32,
-                        0.0,
-                        position.z as f32
-                    ),
-
+                    transform,
                     collider,
 
                     Mesh3d(meshes.add(mesh)),
