@@ -22,12 +22,12 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawn_chunk responds to SpawnChunkEvents
-        app.add_event::<SpawnChunksEvent>();
-        app.add_systems(Update, (spawn_chunks_tasks, handle_chunks_tasks));
+        app.add_observer(spawn_chunks_tasks);
+        app.add_systems(Update, handle_chunks_tasks);
 
         // and all of these respond to ChunkChangedEvents
-        app.add_event::<ChunkChangedEvent>();
-        app.add_systems(Update, (spawn_chunks_around_player, despawn_chunks));
+        app.add_observer(spawn_chunks_around_player);
+        app.add_observer(despawn_chunks);
 
         app.init_resource::<ChunkQueue>();
     }
@@ -354,7 +354,6 @@ fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Col
 
 fn startup(
     mut commands: Commands,
-    mut chunk_changed: EventWriter<ChunkChangedEvent>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -367,7 +366,7 @@ fn startup(
     commands.insert_resource(Noise(Arc::new(noise)));
 
     // triggers the ChunkChangedEvent so that we actually spawn somewhere
-    chunk_changed.write(ChunkChangedEvent(ChunkPosition::new(0, 0)));
+    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
 
     // purple test cube
     let faces_to_keep = vec![
@@ -390,34 +389,30 @@ fn startup(
 // reacts to the SpawnChunksEvent and spawns a Task that computes all the chunks with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunks_tasks, which actually spawns the chunk
 fn spawn_chunks_tasks(
-    mut spawn_chunks: EventReader<SpawnChunksEvent>,
+    trigger: Trigger<SpawnChunksEvent>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
-    let thread_pool = AsyncComputeTaskPool::get();
+    // arcs needed here cuz of borrow checker
+    let noise = Arc::clone(&noise.0);
+    let chunk_positions = Arc::new(trigger.event().0.clone());
+    
+    // spawn task that computes the specified chunks, returning their positions, meshes and colliders
+    let task = AsyncComputeTaskPool::get().spawn(async move {
+        let mut data = ChunkTaskData::default();
 
-    for event in spawn_chunks.read() {
-        // arcs needed here cuz of borrow checker
-        let noise = Arc::clone(&noise.0);
-        let chunk_positions = Arc::new(event.0.clone());
-        
-        // spawn task that computes the specified chunks, returning their positions, meshes and colliders
-        let task = thread_pool.spawn(async move {
-            let mut data = ChunkTaskData::default();
+        for chunk_pos in chunk_positions.iter() {
+            let (mesh, collider) = compute_chunk(&noise, chunk_pos);
 
-            for chunk_pos in chunk_positions.iter() {
-                let (mesh, collider) = compute_chunk(&noise, chunk_pos);
+            data.positions.push(chunk_pos.clone());
+            data.meshes.push(mesh);
+            data.colliders.push(collider);
+        }
 
-                data.positions.push(chunk_pos.clone());
-                data.meshes.push(mesh);
-                data.colliders.push(collider);
-            }
+        data
+    });
 
-            data
-        });
-
-        queue.0.push_back(task);
-    }
+    queue.0.push_back(task);
 }
 
 // we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
@@ -464,57 +459,53 @@ fn handle_chunks_tasks(
 // spawns new chunks based on the player's position
 // this fires the SpawnChunksEvent to accomplish that
 fn spawn_chunks_around_player(
-    mut chunk_changed: EventReader<ChunkChangedEvent>,
-    mut spawn_chunks: EventWriter<SpawnChunksEvent>,
+    trigger: Trigger<ChunkChangedEvent>,
+    mut commands: Commands,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    for current_chunk in chunk_changed.read() {
-        /* generate a grid of chunk positions around the player  */
-        let new_chunks = generate_chunk_grid(&current_chunk.0);
+    /* generate a grid of chunk positions around the player  */
+    let new_chunks = generate_chunk_grid(&trigger.event().0);
 
-        // get existing chunks
-        let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
-        for transform in chunk_query {
-            existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
-        }
-
-        // add new chunk positions to vector based on the grid in new_chunks
-        let mut positions = Vec::new();
-        for pos in new_chunks {
-            // as long as a chunk with that position doesn't exist already
-            if existing_chunks.contains(&pos) {
-                continue;
-            }
-
-            positions.push(pos);
-        }
-
-        // spawn chunks based on positions vector
-        spawn_chunks.write(SpawnChunksEvent(positions));
+    // get existing chunks
+    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
+    for transform in chunk_query {
+        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
     }
+
+    // add new chunk positions to vector based on the grid in new_chunks
+    let mut positions = Vec::new();
+    for pos in new_chunks {
+        // as long as a chunk with that position doesn't exist already
+        if existing_chunks.contains(&pos) {
+            continue;
+        }
+
+        positions.push(pos);
+    }
+
+    // spawn chunks based on positions vector
+    commands.trigger(SpawnChunksEvent(positions));
 }
 
 fn despawn_chunks(
-    mut chunk_changed: EventReader<ChunkChangedEvent>,
+    trigger: Trigger<ChunkChangedEvent>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    for current_chunk in chunk_changed.read() {
-        let chunks = generate_chunk_grid(&current_chunk.0);
+    let chunks = generate_chunk_grid(&trigger.event().0);
 
-        // check all existing chunks
-        for (entity, transform) in chunk_query {
-            // if this chunk isn't in the grid, despawn it
-            if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
-                commands.entity(entity).despawn();
-            }
+    // check all existing chunks
+    for (entity, transform) in chunk_query {
+        // if this chunk isn't in the grid, despawn it
+        if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
+            commands.entity(entity).despawn();
         }
     }
 }
 
 fn update_current_chunk(
-    mut chunk_changed: EventWriter<ChunkChangedEvent>,
+    mut commands: Commands,
     player_transform: Single<&Transform, With<player::Player>>,
 
     mut prev_chunk: Local<ChunkPosition>
@@ -530,6 +521,6 @@ fn update_current_chunk(
         prev_chunk.x = chunk_x;
         prev_chunk.z = chunk_z;
 
-        chunk_changed.write(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
+        commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
     }
 }
