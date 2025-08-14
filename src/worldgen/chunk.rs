@@ -256,6 +256,7 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
     .with_inserted_indices(Indices::U32(new_indices))
 }
 
+// uses an IVec so that it can be hashed properly
 // this function doesn't work fully properly because of the CHUNK_VERTICAL_SIZE being 1
 // tho im not sure why it cant work with it just being 1
 // but oh well, ill fix this later i think
@@ -276,7 +277,8 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 
 fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Collider) {
     // hashset of voxel positions
-    let mut voxel_positions = HashSet::new();
+    // we use an IVec so that we can hash it
+    let mut voxel_positions: HashSet<IVec3> = HashSet::new();
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
