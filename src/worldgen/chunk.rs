@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::collections::{HashSet, HashMap};
 
 use bevy::tasks::{block_on, futures_lite::future, AsyncComputeTaskPool, Task};
 
@@ -127,7 +127,7 @@ struct ChunkChangedEvent(ChunkPosition);
 struct Noise(Arc<FastNoiseLite>);
 
 #[derive(Resource, Default)]
-struct ChunkQueue(VecDeque<Task<ChunkTaskData>>);
+struct ChunkQueue(Vec<Task<ChunkTaskData>>);
 
 /* ------------------- */
 /*      components     */
@@ -417,7 +417,7 @@ fn spawn_chunks_tasks(
         data
     });
 
-    queue.0.push_back(task);
+    queue.0.push(task);
 }
 
 // we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
