@@ -21,8 +21,8 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Update, update_current_chunk);
         app.add_systems(Startup, startup);
 
-        // spawn_chunk responds to SpawnChunkEvents
-        app.add_observer(spawn_chunks_tasks);
+        // spawns/handles tasks responsible for generating chunks 
+        app.add_observer(spawn_chunks_tasks); // responds to SpawnChunksEvent
         app.add_systems(Update, handle_chunks_tasks);
 
         // and all of these respond to ChunkChangedEvents
@@ -35,7 +35,6 @@ impl Plugin for ChunkPlugin {
 /* 
     TODO:
         - fix face culling (later though)
-        - add multithreading to chunk generation
 
         MAYBE:
         - frustum culling
@@ -117,7 +116,6 @@ struct SpawnChunksEvent(HashSet<ChunkPosition>);
 #[derive(Event)]
 struct ChunkChangedEvent(ChunkPosition);
 
-
 /* ------------------ */
 /*      resources     */
 /* ------------------ */
@@ -134,9 +132,6 @@ struct ChunkQueue(Vec<Task<ChunkTaskData>>);
 /* ------------------- */
 // #tag components
 
-// the hashset represents voxel position data
-// the player can destroy a block by aligning their mouse position to the voxel position and then removing the position from the voxels field
-// after that the mesh gets reconstructed based on the voxels field, meaning that the destroyed block wont be there anymore
 #[derive(Component)]
 #[require(Transform, Visibility)]
 struct Chunk;
@@ -281,7 +276,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 
 fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Collider) {
     // hashset of voxel positions
-    let mut voxel_positions = HashSet::new();
+    let mut voxel_positions = HashSet::new(); // TODO: convert to Vec
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
@@ -393,7 +388,6 @@ fn spawn_chunks_tasks(
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
-    // arcs needed here cuz of borrow checker
     let noise = Arc::clone(&noise.0);
     let chunk_positions = Arc::new(trigger.event().0.clone());
     
@@ -417,6 +411,7 @@ fn spawn_chunks_tasks(
         data
     });
 
+    // push task to task queue
     queue.0.push(task);
 }
 
@@ -461,7 +456,7 @@ fn handle_chunks_tasks(
     });
 }
 
-// spawns new chunks based on the player's position
+// spawns new chunks based on the player's position, runs when the ChunkChangedEvent is triggered
 // triggers the SpawnChunksEvent
 fn spawn_chunks_around_player(
     trigger: Trigger<ChunkChangedEvent>,
@@ -478,24 +473,26 @@ fn spawn_chunks_around_player(
         existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
     }
 
-    // only keep the positions that dont exist yet, so that we dont spawn new chunks in a place where a chunk already exists
+    // only keep the positions that dont exist, so that we dont spawn new chunks in a place where a chunk already exists
     new_chunks.retain(|pos| !existing_chunks.contains(pos));
 
-    // spawn chunks based on positions vector
+    // spawn chunks based on chunk positions hashset
     commands.trigger(SpawnChunksEvent(new_chunks));
 }
 
+// despawns chunks that aren't in the chunk grid
+// runs when the ChunkChangedEvent triggers 
 fn despawn_chunks(
     trigger: Trigger<ChunkChangedEvent>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let chunks = generate_chunk_grid(&trigger.event().0);
+    let chunk_grid = generate_chunk_grid(&trigger.event().0);
 
-    // check all existing chunks
+    // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
-        // if this chunk isn't in the grid, despawn it
-        if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
+        // check chunk grid, if this chunk isn't in the grid, despawn it
+        if !chunk_grid.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
             commands.entity(entity).despawn();
         }
     }
