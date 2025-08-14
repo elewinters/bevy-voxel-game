@@ -423,10 +423,11 @@ fn handle_chunks_tasks(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    println!("QUEUE ITEMS: {}", queue.0.len());
-    queue.0.retain_mut(|task| {
-        let mut retain = true;
+    // debug meow
+    info!("QUEUE ITEMS: {}", queue.0.len());
 
+    // remove tasks from the queue that have finished and have spawned successfully
+    queue.0.retain_mut(|task| {
         if let Some(chunk) = block_on(future::poll_once(task)) {
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::new();
@@ -449,10 +450,14 @@ fn handle_chunks_tasks(
             }
 
             commands.spawn_batch(batch);
-            retain = false;
-        }
 
-        retain
+            // remove from the queue, as the task has finished 
+            false
+        }
+        else {
+            // keep it in the queue, as the task is still processing
+            true
+        }
     });
 }
 
