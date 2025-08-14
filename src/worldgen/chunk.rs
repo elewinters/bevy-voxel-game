@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::collections::{HashSet, HashMap, VecDeque};
 
 use bevy::tasks::{block_on, futures_lite::future, AsyncComputeTaskPool, Task};
@@ -52,7 +52,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 16;
+const RENDER_DISTANCE: i32 = 32;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -428,7 +428,8 @@ fn handle_chunks_tasks(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    queue.0.retain_mut(|mut task| {
+    println!("QUEUE ITEMS: {}", queue.0.len());
+    queue.0.retain_mut(|task| {
         let mut retain = true;
 
         if let Some(chunk) = block_on(future::poll_once(task)) {
@@ -464,13 +465,11 @@ fn handle_chunks_tasks(
 // this fires the SpawnChunksEvent to accomplish that
 fn spawn_chunks_around_player(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
-    spawn_chunk: EventWriter<SpawnChunksEvent>,
+    mut spawn_chunks: EventWriter<SpawnChunksEvent>,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    let spawn_chunks = Mutex::new(spawn_chunk);
-
-    chunk_changed.par_read().for_each(|current_chunk| {
+    for current_chunk in chunk_changed.read() {
         /* generate a grid of chunk positions around the player  */
         let new_chunks = generate_chunk_grid(&current_chunk.0);
 
@@ -492,29 +491,26 @@ fn spawn_chunks_around_player(
         }
 
         // spawn chunks based on positions vector
-        let mut spawn_chunks_mtx = spawn_chunks.lock().unwrap();
-        spawn_chunks_mtx.write(SpawnChunksEvent(positions));
-    });
+        spawn_chunks.write(SpawnChunksEvent(positions));
+    }
 }
 
 fn despawn_chunks(
     mut chunk_changed: EventReader<ChunkChangedEvent>,
-    par_commands: ParallelCommands,
+    mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    chunk_changed.par_read().for_each(|current_chunk| {
+    for current_chunk in chunk_changed.read() {
         let chunks = generate_chunk_grid(&current_chunk.0);
 
         // check all existing chunks
         for (entity, transform) in chunk_query {
             // if this chunk isn't in the grid, despawn it
             if !chunks.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
-                par_commands.command_scope(|mut commands| {
-                    commands.entity(entity).despawn();
-                });
+                commands.entity(entity).despawn();
             }
         }
-    });
+    }
 }
 
 fn update_current_chunk(
