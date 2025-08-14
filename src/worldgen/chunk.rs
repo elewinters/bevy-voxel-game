@@ -56,11 +56,12 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 32;
+const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
+const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
 
 // noise algorithm constants
 const SCALE: f32 = 0.5; // number from 0.0 to 1.0
@@ -283,7 +284,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Collider) {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
-    let mut voxel_positions: HashSet<IVec3> = HashSet::new();
+    let mut voxel_positions: HashSet<IVec3> = HashSet::with_capacity(CHUNK_LEN);
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
@@ -313,7 +314,7 @@ fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Col
     // generate mesh based on voxels
     for voxel_pos in &voxel_positions {
         // determine which faces to keep for this mesh
-        let mut faces_to_keep = Vec::new();
+        let mut faces_to_keep = Vec::with_capacity(6);
         
         // check each face
         if should_draw_face(VoxelFace::Front, voxel_pos, &voxel_positions) {
@@ -437,7 +438,7 @@ fn handle_chunks_tasks(
     queue.0.retain_mut(|task| {
         if let Some(chunk) = block_on(future::poll_once(task)) {
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
-            let mut batch = Vec::new();
+            let mut batch = Vec::with_capacity(CHUNK_SIZE_HORIZONTAL as usize);
 
             for ((transform, mesh), collider) in chunk.transforms.into_iter().zip(chunk.meshes).zip(chunk.colliders) {
                 batch.push((
