@@ -276,7 +276,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
 
 fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Collider) {
     // hashset of voxel positions
-    let mut voxel_positions = HashSet::new(); // TODO: convert to Vec
+    let mut voxel_positions = HashSet::new();
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
