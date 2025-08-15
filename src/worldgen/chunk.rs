@@ -18,7 +18,7 @@ use crate::player;
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_current_chunk);
+        app.add_systems(Update, (update_current_chunk, remove_voxel));
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
@@ -104,9 +104,11 @@ impl ChunkPosition {
 
 #[derive(Default)]
 struct ChunkTaskData {
+    voxel_positions: Vec<HashSet<IVec3>>,
+
     transforms: Vec<Transform>,
     meshes: Vec<Mesh>,
-    colliders: Vec<Collider>
+    colliders: Vec<Collider>,
 }
 
 /* --------------- */
@@ -140,7 +142,9 @@ struct ChunkQueue(Vec<Task<ChunkTaskData>>);
 
 #[derive(Component)]
 #[require(Transform, Visibility)]
-struct Chunk;
+struct Chunk {
+    voxel_positions: HashSet<IVec3>
+}
 
 /* ------------------ */
 /*      functions     */
@@ -281,7 +285,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
     !voxel_positions.contains(&neighbor_pos)
 }
 
-fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Collider) {
+fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
     let mut voxel_positions: HashSet<IVec3> = HashSet::with_capacity(CHUNK_LEN);
@@ -308,11 +312,15 @@ fn compute_chunk(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> (Mesh, Col
         }
     }
 
+    voxel_positions
+}
+
+fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
     // generate mesh based on voxels
-    for voxel_pos in &voxel_positions {
+    for voxel_pos in voxel_positions {
         // determine which faces to keep for this mesh
         let mut faces_to_keep = Vec::with_capacity(6);
         
@@ -404,8 +412,10 @@ fn spawn_chunks_tasks(
         let mut data = ChunkTaskData::default();
 
         for chunk_pos in chunk_positions.iter() {
-            let (mesh, collider) = compute_chunk(&noise, chunk_pos);
+            let voxel_positions = compute_chunk_voxel_positions(&noise, chunk_pos);
+            let (mesh, collider) = compute_chunk_mesh(&voxel_positions);
 
+            data.voxel_positions.push(voxel_positions);
             data.transforms.push(Transform::from_xyz(
                 chunk_pos.x as f32,
                 0.0,
@@ -432,7 +442,7 @@ fn handle_chunks_tasks(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // debug meow
-    info!("QUEUE ITEMS: {}", queue.0.len());
+    //info!("QUEUE ITEMS: {}", queue.0.len());
 
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| {
@@ -440,13 +450,15 @@ fn handle_chunks_tasks(
             // we push Bundles into this vector because spawn_batch is faster than individually spawning
             let mut batch = Vec::with_capacity(CHUNK_SIZE_HORIZONTAL as usize);
 
-            for ((transform, mesh), collider) in chunk.transforms.into_iter().zip(chunk.meshes).zip(chunk.colliders) {
+            for (((voxel_positions, transform), mesh), collider) in chunk.voxel_positions.into_iter().zip(chunk.transforms).zip(chunk.meshes).zip(chunk.colliders) {
                 batch.push((
-                    Chunk,
+                    Chunk {
+                        voxel_positions
+                    },
 
                     transform,
                     collider,
-
+                    
                     Mesh3d(meshes.add(mesh)),
                     MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
                 ));
@@ -524,5 +536,30 @@ fn update_current_chunk(
         prev_chunk.z = chunk_z;
 
         commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
+    }
+}
+
+fn remove_voxel(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+
+    keys: Res<ButtonInput<KeyCode>>,
+    chunks: Query<(Entity, &mut Chunk), With<Chunk>>,
+) {
+    for (entity, mut chunk) in chunks {
+        if keys.pressed(KeyCode::Enter) {
+            // modify voxel positions
+            let pos = chunk.voxel_positions.iter().next().unwrap().clone();
+            chunk.voxel_positions.remove(&pos);
+
+            // despawn mesh and collider
+            commands.entity(entity).remove::<Mesh3d>();
+            commands.entity(entity).remove::<Collider>();
+
+            // generate new mesh and collider
+            let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
+            commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
+            commands.entity(entity).insert(collider);
+        }
     }
 }
