@@ -5,7 +5,7 @@ pub struct WindowPlugin;
 impl Plugin for WindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, (window_setup, cursor_lock));
-        app.add_systems(Update, cursor_locking_on_esc);
+        app.add_systems(Update, (cursor_center, cursor_locking_on_esc));
     }
 }
 
@@ -13,6 +13,14 @@ impl Plugin for WindowPlugin {
 fn window_setup(mut window: Single<&mut Window>) {
     window.position = WindowPosition::Centered(MonitorSelection::Current);
     window.present_mode = PresentMode::AutoNoVsync;
+}
+
+fn cursor_center(mut window: Single<&mut Window>) {
+    let center = Vec2::new(
+        window.width() / 2.0,
+        window.height() / 2.0,
+    );
+    window.set_cursor_position(Some(center));
 }
 
 // enables us to unlock the cursor when we press esc
