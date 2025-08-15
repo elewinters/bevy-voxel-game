@@ -19,6 +19,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
+            MeshPickingPlugin,
             RapierPhysicsPlugin::<NoUserData>::default(),
             //RapierDebugRenderPlugin::default(),
             FpsOverlayPlugin {

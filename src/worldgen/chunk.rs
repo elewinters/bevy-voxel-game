@@ -18,7 +18,7 @@ use crate::player;
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (update_current_chunk, remove_voxel));
+        app.add_systems(Update, update_current_chunk);
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
@@ -56,7 +56,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 16;
+const RENDER_DISTANCE: i32 = 3;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -180,7 +180,7 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> HashSet<ChunkPosition> 
 fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     let noise_y = perlin_noise.get_noise_2d(x / SMOOTHNESS, z / SMOOTHNESS) * HEIGHT_VARIATION;
 
-    noise_y.round()
+    noise_y.floor()
 }
 
 // generates a voxel mesh based on the faces specified in faces_to_keep
@@ -447,11 +447,8 @@ fn handle_chunks_tasks(
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| {
         if let Some(chunk) = block_on(future::poll_once(task)) {
-            // we push Bundles into this vector because spawn_batch is faster than individually spawning
-            let mut batch = Vec::with_capacity(CHUNK_SIZE_HORIZONTAL as usize);
-
             for (((voxel_positions, transform), mesh), collider) in chunk.voxel_positions.into_iter().zip(chunk.transforms).zip(chunk.meshes).zip(chunk.colliders) {
-                batch.push((
+                commands.spawn((
                     Chunk {
                         voxel_positions
                     },
@@ -461,10 +458,8 @@ fn handle_chunks_tasks(
                     
                     Mesh3d(meshes.add(mesh)),
                     MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-                ));
+                )).observe(break_voxel);
             }
-
-            commands.spawn_batch(batch);
 
             // remove from the queue, as the task has finished 
             false
@@ -539,27 +534,38 @@ fn update_current_chunk(
     }
 }
 
-fn remove_voxel(
+fn break_voxel(
+    trigger: Trigger<Pointer<Click>>,
+
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
 
-    keys: Res<ButtonInput<KeyCode>>,
-    chunks: Query<(Entity, &mut Chunk), With<Chunk>>,
+    mut chunk_query: Query<(&mut Chunk, &Transform)>,
 ) {
-    for (entity, mut chunk) in chunks {
-        if keys.pressed(KeyCode::Enter) {
-            // modify voxel positions
-            let pos = chunk.voxel_positions.iter().next().unwrap().clone();
-            chunk.voxel_positions.remove(&pos);
+    // get event data hit position
+    let event = trigger.event();
+    let pos = match event.hit.position {
+        Some(x) => x.round(),
+        None => return
+    };
 
-            // despawn mesh and collider
-            commands.entity(entity).remove::<Mesh3d>();
-            commands.entity(entity).remove::<Collider>();
+    // the chunk that we hit and its entity and transform
+    let entity = event.target;
+    let (mut chunk, transform) = chunk_query.get_mut(entity).unwrap();
 
-            // generate new mesh and collider
-            let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
-            commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
-            commands.entity(entity).insert(collider);
-        }
-    }
+    // convert hit position to local chunk space
+    let pos = (pos - transform.translation);
+
+    // remove hit voxel from voxel_positions
+    let exists = chunk.voxel_positions.remove(&pos.as_ivec3());
+    println!("{exists}, {pos}");
+
+    // despawn mesh and collider
+    commands.entity(entity).remove::<Mesh3d>();
+    commands.entity(entity).remove::<Collider>();
+
+    // generate new mesh and collider based on new voxel_positions
+    let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
+    commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
+    commands.entity(entity).insert(collider);
 }
