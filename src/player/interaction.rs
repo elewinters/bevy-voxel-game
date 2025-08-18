@@ -10,6 +10,22 @@ impl Plugin for InteractionPlugin {
     }
 }
 
+/* ------------------ */
+/*      functions     */
+/* ------------------ */
+// #tag functions
+
+// align the hit position from the Pointer<Click> event to the voxel_positions vector
+fn align_hit_pos(local_pos: Vec3, normal: Vec3) -> IVec3 {
+    // move slightly inward from the surface to ensure we're inside the voxel
+    (local_pos - normal * 0.1).round().as_ivec3()
+}
+
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+// #tag systems
+
 fn break_voxel(
     trigger: Trigger<Pointer<Click>>,
 
@@ -36,10 +52,10 @@ fn break_voxel(
 
     // convert hit position to local chunk space
     let local_pos = pos - chunk_transform.translation;
-    let voxel_pos = (local_pos - normal * 0.1).round().as_ivec3();  // move slightly inward from the surface to ensure we're inside the voxel
+    let pos = align_hit_pos(local_pos, normal);
 
     // remove hit voxel from voxel_positions, dont regenerate mesh if block doesn't exist
-    if !chunk.voxel_positions.remove(&voxel_pos) {
+    if !chunk.voxel_positions.remove(&pos) {
         return;
     }
 
