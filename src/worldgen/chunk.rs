@@ -291,7 +291,7 @@ fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
 // this function doesn't work fully properly because of the CHUNK_VERTICAL_SIZE being 1
 // tho im not sure why it cant work with it just being 1
 // but oh well, ill fix this later i think
-fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
+fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
     let neighbor_pos = match face {
         VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
         VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
@@ -340,31 +340,20 @@ fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
 
     // generate mesh based on voxels
     for voxel_pos in voxel_positions {
-        // determine which faces to keep for this mesh
-        let mut faces_to_keep = Vec::with_capacity(6);
-        
-        // check each face
-        if should_draw_face(VoxelFace::Front, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Front);
-        }
-        if should_draw_face(VoxelFace::Back, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Back);
-        }
-        if should_draw_face(VoxelFace::Right, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Right);
-        }
-        if should_draw_face(VoxelFace::Left, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Left);
-        }
-        if should_draw_face(VoxelFace::Top, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Top);
-        }
-        if should_draw_face(VoxelFace::Bottom, voxel_pos, voxel_positions) {
-            faces_to_keep.push(VoxelFace::Bottom);
-        }
+        let mut faces = vec![
+            VoxelFace::Front,
+            VoxelFace::Back,
+            VoxelFace::Right,
+            VoxelFace::Left,
+            VoxelFace::Top,
+            VoxelFace::Bottom,
+        ];
+
+        // only keep the faces that we should draw
+        faces.retain(|face| should_draw_face(face, voxel_pos, voxel_positions));
 
         // merge mesh
-        let mut voxel_mesh = generate_voxel_mesh(faces_to_keep);
+        let mut voxel_mesh = generate_voxel_mesh(faces);
         voxel_mesh.translate_by(voxel_pos.as_vec3());
         
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
