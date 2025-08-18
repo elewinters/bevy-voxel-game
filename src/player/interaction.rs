@@ -75,7 +75,7 @@ fn highlight_voxel(
     let entity = event.target;
 
     // check if hit is a chunk
-    if let Err(_) = chunk_query.get(entity) {
+    if chunk_query.get(entity).is_err() {
         return;
     }
 
