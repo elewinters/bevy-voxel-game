@@ -64,7 +64,6 @@ fn highlight_voxel(
     chunk_query: Query<&Transform, (With<chunk::Chunk>, Without<HighlightMesh>)>,
     mut highlight_transform: Single<&mut Transform, (With<HighlightMesh>, Without<chunk::Chunk>)>,
 ) {
-    println!("AH");
     // get event
     let event = trigger.event();
 
@@ -96,6 +95,12 @@ fn break_voxel(
 
     mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
 ) {
+    // only respond to left clicks
+    match trigger.button {
+        PointerButton::Primary => (),
+        _ => return
+    }
+
     // get event
     let event = trigger.event();
 
