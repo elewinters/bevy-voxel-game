@@ -204,79 +204,66 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     noise_y.floor()
 }
 
-// generates a voxel mesh based on the faces specified in faces_to_keep
-fn generate_voxel_mesh(faces_to_keep: Vec<VoxelFace>) -> Mesh {
-    let mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
-
-    // get all attributes of Cuboid mesh
-    let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
-        VertexAttributeValues::Float32x3(x) => x,
-        _ => panic!("positions are not in 32x3 format")
-    };
-
-    let normals = match mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap() {
-        VertexAttributeValues::Float32x3(x) => x,
-        _ => panic!("normals are not in 32x3 format")
-    };
-
-    let uvs = match mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap() {
-        VertexAttributeValues::Float32x2(x) => x,
-        _ => panic!("UVs are not in 32x2 format")
-    };
+fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
+    let source_mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
     
-    let indices = match mesh.indices().unwrap() {
-        Indices::U32(vec) => vec,
-        _ => panic!("expected U32 indices for mesh"),
+    // extract attributes from source mesh
+    let (positions, normals, uvs, indices) = {
+        let pos = match source_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
+            VertexAttributeValues::Float32x3(x) => x,
+            _ => panic!("positions are not in 32x3 format")
+        };
+        let norm = match source_mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap() {
+            VertexAttributeValues::Float32x3(x) => x,
+            _ => panic!("normals are not in 32x3 format")
+        };
+        let uv = match source_mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap() {
+            VertexAttributeValues::Float32x2(x) => x,
+            _ => panic!("UVs are not in 32x2 format")
+        };
+        let idx = match source_mesh.indices().unwrap() {
+            Indices::U32(vec) => vec,
+            _ => panic!("expected U32 indices for mesh"),
+        };
+        (pos, norm, uv, idx)
     };
+
+    let max_vertices = faces.len() * 24;
 
     // new vectors for filtered attributes
-    let mut new_positions = Vec::new();
-    let mut new_normals = Vec::new();
-    let mut new_uvs = Vec::new();
-    let mut new_indices = Vec::new();
+    let mut new_positions = Vec::with_capacity(max_vertices);
+    let mut new_normals = Vec::with_capacity(max_vertices);
+    let mut new_uvs = Vec::with_capacity(max_vertices);
+    let mut new_indices = Vec::with_capacity(faces.len() * 6);
 
     // map old vertex indices to new ones using a HashMap
-    let mut vertex_map = HashMap::new();
-    let mut next_vertex_id = 0;
+    let mut vertex_map = HashMap::with_capacity(max_vertices);
+    let mut next_vertex_id = 0u32;
 
-    // process each face we want to keep
-    for face in faces_to_keep {
-        let face_idx = face as usize * 6;
-        let face_vertices = &indices[face_idx..face_idx + 6];
-
-        // for each vertex in this face
-        for &old_idx in face_vertices {
+    // process each face that we want in our mesh
+    for face in faces {
+        let face_start = (face as usize) * 6;
+        
+        // process 6 vertices for this face
+        for &old_idx in &indices[face_start..face_start + 6] {
             let old_idx = old_idx as usize;
             
-            // get or create new index for this vertex
+            // get or insert vertex if it doesn't exist
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
-                // first time seeing this vertex - add its data
-                new_positions.push([
-                    positions[old_idx][0],
-                    positions[old_idx][1],
-                    positions[old_idx][2]
-                ]);
-                new_normals.push([
-                    normals[old_idx][0],
-                    normals[old_idx][1],
-                    normals[old_idx][2]
-                ]);
-                new_uvs.push([
-                    uvs[old_idx][0],
-                    uvs[old_idx][1]
-                ]);
-
+                new_positions.push(positions[old_idx]);
+                new_normals.push(normals[old_idx]);
+                new_uvs.push(uvs[old_idx]);
+                
                 let id = next_vertex_id;
                 next_vertex_id += 1;
                 id
             });
-
-            // add the new index
+            
             new_indices.push(new_idx);
         }
     }
 
-    // create new mesh with filtered data
+    // build and return mesh
     Mesh::new(
         bevy::render::render_resource::PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
