@@ -210,15 +210,15 @@ fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
     // extract attributes from source mesh
     let (positions, normals, uvs, indices) = {
         let pos = match source_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
-            VertexAttributeValues::Float32x3(x) => x,
+            VertexAttributeValues::Float32x3(vec) => vec,
             _ => panic!("positions are not in 32x3 format")
         };
         let norm = match source_mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap() {
-            VertexAttributeValues::Float32x3(x) => x,
+            VertexAttributeValues::Float32x3(vec) => vec,
             _ => panic!("normals are not in 32x3 format")
         };
         let uv = match source_mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap() {
-            VertexAttributeValues::Float32x2(x) => x,
+            VertexAttributeValues::Float32x2(vec) => vec,
             _ => panic!("UVs are not in 32x2 format")
         };
         let idx = match source_mesh.indices().unwrap() {

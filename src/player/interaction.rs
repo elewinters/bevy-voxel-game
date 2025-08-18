@@ -101,7 +101,7 @@ fn manipulate_voxels(
     
     // the chunk that we hit and its transform
     let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
-        Ok((chunk, chunk_transform)) => (chunk, chunk_transform),
+        Ok(x) => x,
         Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
     };
 
