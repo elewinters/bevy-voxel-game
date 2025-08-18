@@ -563,18 +563,27 @@ fn regenerate_chunk(
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 
-    chunk_query: Query<&Chunk>,
+    chunk_query: Query<(&Chunk, &Transform)>,
 ) {
     let entity = trigger.event().0;
-    let chunk = chunk_query.get(entity).unwrap();
+    let (chunk, chunk_transform) = match chunk_query.get(entity) {
+        Ok(x) => x,
+        _ => return
+    };
 
-    // despawn mesh and collider
-    commands.entity(entity).remove::<Mesh3d>();
-    commands.entity(entity).remove::<Collider>();
+    commands.entity(entity).despawn();
 
     // generate new mesh and collider based on new voxel_positions
     let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
-    commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
-    commands.entity(entity).insert(collider);
+
+    commands.spawn(ChunkBundle(
+        chunk.clone(),
+        chunk_transform.clone(),
+        collider,
+
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+    ));
 }
