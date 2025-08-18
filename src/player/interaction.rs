@@ -8,7 +8,7 @@ impl Plugin for InteractionPlugin {
         app.add_systems(Startup, spawn_highlight_mesh);
 
         app.add_observer(highlight_voxel);
-        app.add_observer(manipulate_chunk_voxels);
+        app.add_observer(manipulate_voxels);
     }
 }
 
@@ -89,7 +89,7 @@ fn highlight_voxel(
 }
 
 // voxel breaking/placing
-fn manipulate_chunk_voxels(
+fn manipulate_voxels(
     trigger: Trigger<Pointer<Click>>,
 
     mut commands: Commands,
