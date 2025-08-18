@@ -332,22 +332,22 @@ fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
         let mut faces_to_keep = Vec::with_capacity(6);
         
         // check each face
-        if should_draw_face(VoxelFace::Front, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Front, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Front);
         }
-        if should_draw_face(VoxelFace::Back, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Back, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Back);
         }
-        if should_draw_face(VoxelFace::Right, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Right, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Right);
         }
-        if should_draw_face(VoxelFace::Left, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Left, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Left);
         }
-        if should_draw_face(VoxelFace::Top, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Top, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Top);
         }
-        if should_draw_face(VoxelFace::Bottom, voxel_pos, &voxel_positions) {
+        if should_draw_face(VoxelFace::Bottom, voxel_pos, voxel_positions) {
             faces_to_keep.push(VoxelFace::Bottom);
         }
 
