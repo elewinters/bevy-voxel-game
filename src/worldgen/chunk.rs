@@ -276,9 +276,6 @@ fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
 }
 
 // uses an IVec so that it can be hashed properly
-// this function doesn't work fully properly because of the CHUNK_VERTICAL_SIZE being 1
-// tho im not sure why it cant work with it just being 1
-// but oh well, ill fix this later i think
 fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
     let neighbor_pos = match face {
         VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
@@ -437,9 +434,6 @@ fn handle_chunk_tasks(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // debug meow
-    //info!("QUEUE ITEMS: {}", queue.0.len());
-
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| {
         if let Some(chunk) = block_on(future::poll_once(task)) {
@@ -545,16 +539,20 @@ fn regenerate_chunk(
     chunk_query: Query<(&Chunk, &Transform)>,
 ) {
     let entity = trigger.event().0;
+
+    // get chunk component and chunk transform through entity
     let (chunk, chunk_transform) = match chunk_query.get(entity) {
         Ok(x) => x,
         _ => return
     };
 
+    // despawn chunk
     commands.entity(entity).despawn();
 
     // generate new mesh and collider based on new voxel_positions
     let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
 
+    // spawn new chunk
     commands.spawn(ChunkBundle(
         chunk.clone(),
         *chunk_transform, // this performs a copy
