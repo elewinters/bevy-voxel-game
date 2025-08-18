@@ -544,9 +544,9 @@ fn break_voxel(
 ) {
     // get event data hit position
     let event = trigger.event();
-    let pos = match event.hit.position {
-        Some(x) => x.round(),
-        None => return
+    let (pos, normal) = match (event.hit.position, event.hit.normal) {
+        (Some(pos), Some(normal)) => (pos, normal),
+        _ => return
     };
 
     // the chunk that we hit and its entity and transform
@@ -554,11 +554,13 @@ fn break_voxel(
     let (mut chunk, transform) = chunk_query.get_mut(entity).unwrap();
 
     // convert hit position to local chunk space
-    let pos = (pos - transform.translation);
+    let local_pos = pos - transform.translation;
+    let voxel_pos = (local_pos - normal * 0.1).round().as_ivec3();  // move slightly inward from the surface to ensure we're inside the voxel
 
-    // remove hit voxel from voxel_positions
-    let exists = chunk.voxel_positions.remove(&pos.as_ivec3());
-    println!("{exists}, {pos}");
+    // remove hit voxel from voxel_positions, dont regenerate mesh if block doesn't exist
+    if !chunk.voxel_positions.remove(&voxel_pos) {
+        return;
+    }
 
     // despawn mesh and collider
     commands.entity(entity).remove::<Mesh3d>();

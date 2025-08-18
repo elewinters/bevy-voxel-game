@@ -17,3 +17,13 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[profile.dev-optimized]
+inherits = "dev"
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+strip = true
