@@ -51,7 +51,11 @@ fn spawn_highlight_mesh(
 
         Transform::from_xyz(0.0, 10.0, 0.0),
         Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(materials.add(Color::from(BLACK)))
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: Color::srgba(0.1, 0.1, 0.1, 0.5),
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        }))
     ));
 }
 fn highlight_voxel(
