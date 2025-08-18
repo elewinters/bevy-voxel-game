@@ -313,7 +313,7 @@ fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPositio
     voxel_positions
 }
 
-pub fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
+fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
@@ -354,6 +354,18 @@ pub fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) 
 
     // return
     (chunk_mesh, collider)
+}
+
+// generic function meant to be called my other modules, this is actually never called in this file
+pub fn regenerate_chunk(entity: &mut EntityCommands, meshes: &mut ResMut<Assets<Mesh>>, voxel_positions: &HashSet<IVec3>) {
+    // despawn mesh and collider
+    entity.remove::<Mesh3d>();
+    entity.remove::<Collider>();
+
+    // generate new mesh and collider based on new voxel_positions
+    let (mesh, collider) = compute_chunk_mesh(voxel_positions);
+    entity.insert(Mesh3d(meshes.add(mesh)));
+    entity.insert(collider);
 }
 
 /* ---------------- */

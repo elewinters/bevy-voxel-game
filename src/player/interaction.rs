@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use crate::player::*;
 use crate::worldgen::chunk;
 
 pub struct InteractionPlugin;
@@ -64,6 +63,7 @@ fn spawn_highlight_mesh(
         }))
     ));
 }
+
 fn highlight_voxel(
     trigger: Trigger<Pointer<Move>>,
 
@@ -132,14 +132,8 @@ fn break_voxel(
         return;
     }
 
-    // despawn mesh and collider
-    commands.entity(entity).remove::<Mesh3d>();
-    commands.entity(entity).remove::<Collider>();
-
-    // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = chunk::compute_chunk_mesh(&chunk.voxel_positions);
-    commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
-    commands.entity(entity).insert(collider);
+    // regenerate chunk
+    chunk::regenerate_chunk(&mut commands.entity(entity), &mut meshes, &chunk.voxel_positions);
 }
 
 fn place_voxel(
@@ -179,12 +173,6 @@ fn place_voxel(
     // add new voxel position to voxel_positions
     chunk.voxel_positions.insert(pos);
 
-    // despawn mesh and collider
-    commands.entity(entity).remove::<Mesh3d>();
-    commands.entity(entity).remove::<Collider>();
-
-    // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = chunk::compute_chunk_mesh(&chunk.voxel_positions);
-    commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
-    commands.entity(entity).insert(collider);
+    // regenerate chunk
+    chunk::regenerate_chunk(&mut commands.entity(entity), &mut meshes, &chunk.voxel_positions);
 }
