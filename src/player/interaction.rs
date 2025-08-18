@@ -139,5 +139,5 @@ fn manipulate_voxels(
     }
 
     // regenerate chunk
-    commands.trigger(chunk::RegenerateChunkEvent(entity))
+    commands.trigger(chunk::RegenerateChunk(entity))
 }

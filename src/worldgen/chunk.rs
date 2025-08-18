@@ -22,14 +22,14 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
-        app.add_observer(spawn_chunk_tasks); // responds to SpawnChunksEvent
+        app.add_observer(spawn_chunk_tasks); // responds to thes SpawnChunks event
         app.add_systems(Update, handle_chunk_tasks);
 
-        // and all of these respond to ChunkChangedEvents
+        // and all of these respond to ChunkChanged events
         app.add_observer(spawn_chunks_around_player);
         app.add_observer(despawn_chunks);
 
-        // responds to RegenerateChunkEvent
+        // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
 
         app.init_resource::<ChunkQueue>();
@@ -120,15 +120,15 @@ struct ChunkTaskData {
 // #tag events
 
 #[derive(Event)]
-struct SpawnChunksEvent(HashSet<ChunkPosition>);
+struct SpawnChunks(HashSet<ChunkPosition>);
 
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
 #[derive(Event)]
-struct ChunkChangedEvent(ChunkPosition);
+struct ChunkChanged(ChunkPosition);
 
 #[derive(Event)]
-pub struct RegenerateChunkEvent(pub Entity);
+pub struct RegenerateChunk(pub Entity);
 
 /* ------------------ */
 /*      resources     */
@@ -372,8 +372,8 @@ fn startup(
 
     commands.insert_resource(Noise(Arc::new(noise)));
 
-    // triggers the ChunkChangedEvent so that we actually spawn somewhere
-    commands.trigger(ChunkChangedEvent(ChunkPosition::new(0, 0)));
+    // triggers the ChunkChanged event so that we actually spawn somewhere
+    commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
 
     // purple test cube
     let faces_to_keep = vec![
@@ -393,10 +393,10 @@ fn startup(
     ));
 }
 
-// reacts to the SpawnChunksEvent and spawns a Task that computes all the chunks with the given chunk positions
+// reacts to the SpawnChunks event and spawns a Task that computes all the chunks with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
-    trigger: Trigger<SpawnChunksEvent>,
+    trigger: Trigger<SpawnChunks>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
@@ -429,7 +429,7 @@ fn spawn_chunk_tasks(
     queue.0.push(task);
 }
 
-// we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
+// we handle chunk tasks here, checking if a given task is finished and then spawning the chunk
 fn handle_chunk_tasks(
     mut commands: Commands,
     mut queue: ResMut<ChunkQueue>,
@@ -472,10 +472,10 @@ fn handle_chunk_tasks(
     });
 }
 
-// spawns new chunks based on the player's position, runs when the ChunkChangedEvent is triggered
-// triggers the SpawnChunksEvent
+// spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered
+// triggers the SpawnChunks event
 fn spawn_chunks_around_player(
-    trigger: Trigger<ChunkChangedEvent>,
+    trigger: Trigger<ChunkChanged>,
     mut commands: Commands,
 
     chunk_query: Query<&Transform, With<Chunk>>,
@@ -493,13 +493,13 @@ fn spawn_chunks_around_player(
     new_chunks.retain(|pos| !existing_chunks.contains(pos));
 
     // spawn chunks based on chunk positions hashset
-    commands.trigger(SpawnChunksEvent(new_chunks));
+    commands.trigger(SpawnChunks(new_chunks));
 }
 
 // despawns chunks that aren't in the chunk grid
-// runs when the ChunkChangedEvent triggers 
+// runs when the ChunkChanged event triggers 
 fn despawn_chunks(
-    trigger: Trigger<ChunkChangedEvent>,
+    trigger: Trigger<ChunkChanged>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
@@ -531,12 +531,12 @@ fn update_current_chunk(
         prev_chunk.x = chunk_x;
         prev_chunk.z = chunk_z;
 
-        commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
+        commands.trigger(ChunkChanged(ChunkPosition::new(chunk_x, chunk_z)));
     }
 }
 
 fn regenerate_chunk(
-    trigger: Trigger<RegenerateChunkEvent>,
+    trigger: Trigger<RegenerateChunk>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
