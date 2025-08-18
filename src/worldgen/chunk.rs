@@ -580,7 +580,7 @@ fn regenerate_chunk(
 
     commands.spawn(ChunkBundle(
         chunk.clone(),
-        chunk_transform.clone(),
+        *chunk_transform, // this performs a copy
         collider,
 
         Mesh3d(meshes.add(mesh)),
