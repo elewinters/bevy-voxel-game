@@ -67,18 +67,17 @@ fn spawn_highlight_mesh(
 fn highlight_voxel(
     trigger: Trigger<Pointer<Move>>,
 
-    chunk_query: Query<&Transform, (With<chunk::Chunk>, Without<HighlightMesh>)>,
+    chunk_query: Query<Entity, (With<chunk::Chunk>, Without<HighlightMesh>)>,
     mut highlight_transform: Single<&mut Transform, (With<HighlightMesh>, Without<chunk::Chunk>)>,
 ) {
     // get event
     let event = trigger.event();
-
-    // the chunk that we hit and its entity and transform
     let entity = event.target;
-    let chunk_transform = match chunk_query.get(entity){
-        Ok(transform) => transform,
-        Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
-    };
+
+    // check if hit is a chunk
+    if let Err(_) = chunk_query.get(entity) {
+        return;
+    }
 
     // event data hit position
     let (pos, normal) = match (event.hit.position, event.hit.normal) {
@@ -86,9 +85,7 @@ fn highlight_voxel(
         _ => return
     };
 
-    // convert hit position to local chunk space
     let pos = align_hit_pos_inward(pos, normal);
-
     highlight_transform.translation = pos.as_vec3();
 }
 
@@ -106,9 +103,9 @@ fn break_voxel(
 
     // get event
     let event = trigger.event();
-
-    // the chunk that we hit and its entity and transform
     let entity = event.target;
+    
+    // the chunk that we hit and its transform
     let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
         Ok((chunk, transform)) => (chunk, transform),
         Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
@@ -124,7 +121,7 @@ fn break_voxel(
     let local_pos = pos - chunk_transform.translation;
     let pos = align_hit_pos_inward(local_pos, normal);
 
-    // remove hit voxel from voxel_positions, dont regenerate mesh if block doesn't exist
+    // remove hit voxel from voxel_positions, dont regenerate chunk if block doesn't exist
     if !chunk.voxel_positions.remove(&pos) {
         return;
     }
@@ -150,9 +147,9 @@ fn place_voxel(
 
     // get event
     let event = trigger.event();
-
-    // the chunk that we hit and its entity and transform
     let entity = event.target;
+
+    // the chunk that we hit and its transform
     let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
         Ok((chunk, transform)) => (chunk, transform),
         Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
