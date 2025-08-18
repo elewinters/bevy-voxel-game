@@ -228,7 +228,8 @@ fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
         (pos, norm, uv, idx)
     };
 
-    let max_vertices = faces.len() * 24;
+    // worst case scenario
+    let max_vertices = 30;
 
     // new vectors for filtered attributes
     let mut new_positions = Vec::with_capacity(max_vertices);
