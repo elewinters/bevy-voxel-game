@@ -29,6 +29,9 @@ impl Plugin for ChunkPlugin {
         app.add_observer(spawn_chunks_around_player);
         app.add_observer(despawn_chunks);
 
+        // voxel breaking
+        app.add_observer(break_voxel);
+
         app.init_resource::<ChunkQueue>();
     }
 }
@@ -56,7 +59,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk generation constants
-const RENDER_DISTANCE: i32 = 3;
+const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -447,8 +450,11 @@ fn handle_chunks_tasks(
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| {
         if let Some(chunk) = block_on(future::poll_once(task)) {
+            // we push Bundles into this vector because spawn_batch is faster than individually spawning
+            let mut batch = Vec::with_capacity(CHUNK_SIZE_HORIZONTAL as usize);
+
             for (((voxel_positions, transform), mesh), collider) in chunk.voxel_positions.into_iter().zip(chunk.transforms).zip(chunk.meshes).zip(chunk.colliders) {
-                commands.spawn((
+                batch.push((
                     Chunk {
                         voxel_positions
                     },
@@ -458,8 +464,10 @@ fn handle_chunks_tasks(
                     
                     Mesh3d(meshes.add(mesh)),
                     MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-                )).observe(break_voxel);
+                ));
             }
+
+            commands.spawn_batch(batch);
 
             // remove from the queue, as the task has finished 
             false
@@ -542,19 +550,24 @@ fn break_voxel(
 
     mut chunk_query: Query<(&mut Chunk, &Transform)>,
 ) {
-    // get event data hit position
+    // get event
     let event = trigger.event();
+
+    // the chunk that we hit and its entity and transform
+    let entity = event.target;
+    let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
+        Ok((chunk, transform)) => (chunk, transform),
+        Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
+    };
+
+    // event data hit position
     let (pos, normal) = match (event.hit.position, event.hit.normal) {
         (Some(pos), Some(normal)) => (pos, normal),
         _ => return
     };
 
-    // the chunk that we hit and its entity and transform
-    let entity = event.target;
-    let (mut chunk, transform) = chunk_query.get_mut(entity).unwrap();
-
     // convert hit position to local chunk space
-    let local_pos = pos - transform.translation;
+    let local_pos = pos - chunk_transform.translation;
     let voxel_pos = (local_pos - normal * 0.1).round().as_ivec3();  // move slightly inward from the surface to ensure we're inside the voxel
 
     // remove hit voxel from voxel_positions, dont regenerate mesh if block doesn't exist
