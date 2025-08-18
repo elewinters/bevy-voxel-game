@@ -22,8 +22,8 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
-        app.add_observer(spawn_chunks_tasks); // responds to SpawnChunksEvent
-        app.add_systems(Update, handle_chunks_tasks);
+        app.add_observer(spawn_chunk_tasks); // responds to SpawnChunksEvent
+        app.add_systems(Update, handle_chunk_tasks);
 
         // and all of these respond to ChunkChangedEvents
         app.add_observer(spawn_chunks_around_player);
@@ -394,8 +394,8 @@ fn startup(
 }
 
 // reacts to the SpawnChunksEvent and spawns a Task that computes all the chunks with the given chunk positions
-// we allow this Task to run over several frames, when that task is complete we handle it in handle_chunks_tasks, which actually spawns the chunk
-fn spawn_chunks_tasks(
+// we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
+fn spawn_chunk_tasks(
     trigger: Trigger<SpawnChunksEvent>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
@@ -430,7 +430,7 @@ fn spawn_chunks_tasks(
 }
 
 // we handle SpawnChunksTasks here, checking if a given task is finished and then spawning the chunk
-fn handle_chunks_tasks(
+fn handle_chunk_tasks(
     mut commands: Commands,
     mut queue: ResMut<ChunkQueue>,
 
