@@ -277,9 +277,7 @@ fn should_draw_face(face: VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSe
         VoxelFace::Right => voxel_pos + IVec3::new(1, 0, 0),
         VoxelFace::Left => voxel_pos + IVec3::new(-1, 0, 0),
         VoxelFace::Top => voxel_pos + IVec3::new(0, 1, 0),
-        
-        // the bottom of all terrain is never seen so we just always return false here
-        VoxelFace::Bottom => return false,
+        VoxelFace::Bottom => voxel_pos + IVec3::new(0, -1, 0),
     };
     
     !voxel_positions.contains(&neighbor_pos)
