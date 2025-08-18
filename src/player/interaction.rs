@@ -97,8 +97,6 @@ fn break_voxel(
     trigger: Trigger<Pointer<Click>>,
 
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-
     mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
 ) {
     // only respond to left clicks
@@ -133,15 +131,16 @@ fn break_voxel(
     }
 
     // regenerate chunk
-    chunk::regenerate_chunk(&mut commands.entity(entity), &mut meshes, &chunk.voxel_positions);
+    commands.trigger(chunk::RegenerateChunkEvent {
+        entity, 
+        chunk: chunk.clone()
+    })
 }
 
 fn place_voxel(
     trigger: Trigger<Pointer<Click>>,
 
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-
     mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
 ) {
     // only respond to right clicks
@@ -174,5 +173,8 @@ fn place_voxel(
     chunk.voxel_positions.insert(pos);
 
     // regenerate chunk
-    chunk::regenerate_chunk(&mut commands.entity(entity), &mut meshes, &chunk.voxel_positions);
+    commands.trigger(chunk::RegenerateChunkEvent {
+        entity, 
+        chunk: chunk.clone()
+    })
 }

@@ -29,6 +29,9 @@ impl Plugin for ChunkPlugin {
         app.add_observer(spawn_chunks_around_player);
         app.add_observer(despawn_chunks);
 
+        // responds to RegenerateChunkEvent
+        app.add_observer(regenerate_chunk);
+
         app.init_resource::<ChunkQueue>();
     }
 }
@@ -124,6 +127,12 @@ struct SpawnChunksEvent(HashSet<ChunkPosition>);
 #[derive(Event)]
 struct ChunkChangedEvent(ChunkPosition);
 
+#[derive(Event)]
+pub struct RegenerateChunkEvent {
+    pub entity: Entity,
+    pub chunk: Chunk,
+}
+
 /* ------------------ */
 /*      resources     */
 /* ------------------ */
@@ -140,7 +149,7 @@ struct ChunkQueue(Vec<Task<ChunkTaskData>>);
 /* ------------------- */
 // #tag components
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 #[require(Transform, Visibility)]
 pub struct Chunk {
     pub voxel_positions: HashSet<IVec3>
@@ -356,18 +365,6 @@ fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
     (chunk_mesh, collider)
 }
 
-// generic function meant to be called my other modules, this is actually never called in this file
-pub fn regenerate_chunk(entity: &mut EntityCommands, meshes: &mut ResMut<Assets<Mesh>>, voxel_positions: &HashSet<IVec3>) {
-    // despawn mesh and collider
-    entity.remove::<Mesh3d>();
-    entity.remove::<Collider>();
-
-    // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = compute_chunk_mesh(voxel_positions);
-    entity.insert(Mesh3d(meshes.add(mesh)));
-    entity.insert(collider);
-}
-
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
@@ -547,4 +544,23 @@ fn update_current_chunk(
 
         commands.trigger(ChunkChangedEvent(ChunkPosition::new(chunk_x, chunk_z)));
     }
+}
+
+fn regenerate_chunk(
+    trigger: Trigger<RegenerateChunkEvent>,
+
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let event = trigger.event();
+    let entity = trigger.entity;
+
+    // despawn mesh and collider
+    commands.entity(entity).remove::<Mesh3d>();
+    commands.entity(entity).remove::<Collider>();
+
+    // generate new mesh and collider based on new voxel_positions
+    let (mesh, collider) = compute_chunk_mesh(&event.chunk.voxel_positions);
+    commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
+    commands.entity(entity).insert(collider);
 }
