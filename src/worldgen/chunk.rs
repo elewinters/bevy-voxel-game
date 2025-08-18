@@ -155,6 +155,21 @@ pub struct Chunk {
     pub voxel_positions: HashSet<IVec3>
 }
 
+/* ---------------- */
+/*      bundles     */
+/* ---------------- */
+// #tag components
+
+#[derive(Bundle)]
+struct ChunkBundle(
+    Chunk,
+    Transform,
+    Collider,
+
+    Mesh3d,
+    MeshMaterial3d<StandardMaterial>
+);
+
 /* ------------------ */
 /*      functions     */
 /* ------------------ */
@@ -458,14 +473,14 @@ fn handle_chunks_tasks(
             let mut batch = Vec::with_capacity(CHUNK_SIZE_HORIZONTAL as usize);
 
             for (((voxel_positions, transform), mesh), collider) in chunk.voxel_positions.into_iter().zip(chunk.transforms).zip(chunk.meshes).zip(chunk.colliders) {
-                batch.push((
+                batch.push(ChunkBundle(
                     Chunk {
                         voxel_positions
                     },
 
                     transform,
                     collider,
-                    
+
                     Mesh3d(meshes.add(mesh)),
                     MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
                 ));
