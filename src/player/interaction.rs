@@ -127,10 +127,7 @@ fn break_voxel(
     }
 
     // regenerate chunk
-    commands.trigger(chunk::RegenerateChunkEvent {
-        entity, 
-        chunk: chunk.clone()
-    })
+    commands.trigger(chunk::RegenerateChunkEvent(entity))
 }
 
 fn place_voxel(
@@ -169,8 +166,5 @@ fn place_voxel(
     chunk.voxel_positions.insert(pos);
 
     // regenerate chunk
-    commands.trigger(chunk::RegenerateChunkEvent {
-        entity, 
-        chunk: chunk.clone()
-    })
+    commands.trigger(chunk::RegenerateChunkEvent(entity))
 }

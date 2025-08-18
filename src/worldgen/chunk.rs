@@ -128,10 +128,7 @@ struct SpawnChunksEvent(HashSet<ChunkPosition>);
 struct ChunkChangedEvent(ChunkPosition);
 
 #[derive(Event)]
-pub struct RegenerateChunkEvent {
-    pub entity: Entity,
-    pub chunk: Chunk,
-}
+pub struct RegenerateChunkEvent(pub Entity);
 
 /* ------------------ */
 /*      resources     */
@@ -566,16 +563,18 @@ fn regenerate_chunk(
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+
+    chunk_query: Query<&Chunk>,
 ) {
-    let event = trigger.event();
-    let entity = trigger.entity;
+    let entity = trigger.event().0;
+    let chunk = chunk_query.get(entity).unwrap();
 
     // despawn mesh and collider
     commands.entity(entity).remove::<Mesh3d>();
     commands.entity(entity).remove::<Collider>();
 
     // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = compute_chunk_mesh(&event.chunk.voxel_positions);
+    let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
     commands.entity(entity).insert(Mesh3d(meshes.add(mesh)));
     commands.entity(entity).insert(collider);
 }
