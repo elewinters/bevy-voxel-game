@@ -158,7 +158,7 @@ pub struct Chunk {
 /* ---------------- */
 /*      bundles     */
 /* ---------------- */
-// #tag components
+// #tag bundles
 
 #[derive(Bundle)]
 struct ChunkBundle(
