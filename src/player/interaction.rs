@@ -6,9 +6,20 @@ use crate::worldgen::chunk;
 pub struct InteractionPlugin;
 impl Plugin for InteractionPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(Startup, spawn_highlight_mesh);
+
+        app.add_observer(highlight_voxel);
         app.add_observer(break_voxel);
     }
 }
+
+/* ------------------- */
+/*      components     */
+/* ------------------- */
+// #tag components
+
+#[derive(Component)]
+struct HighlightMesh;
 
 /* ------------------ */
 /*      functions     */
@@ -25,6 +36,53 @@ fn align_hit_pos(local_pos: Vec3, normal: Vec3) -> IVec3 {
 /*      systems     */
 /* ---------------- */
 // #tag systems
+
+fn spawn_highlight_mesh(
+    mut commands: Commands,
+
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mesh = Cuboid::from_length(1.01);
+
+    commands.spawn((
+        HighlightMesh,
+        Pickable::IGNORE,
+
+        Transform::from_xyz(0.0, 10.0, 0.0),
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(materials.add(Color::from(BLACK)))
+    ));
+}
+fn highlight_voxel(
+    trigger: Trigger<Pointer<Move>>,
+
+    chunk_query: Query<&Transform, (With<chunk::Chunk>, Without<HighlightMesh>)>,
+    mut highlight_transform: Single<&mut Transform, (With<HighlightMesh>, Without<chunk::Chunk>)>,
+) {
+    println!("AH");
+    // get event
+    let event = trigger.event();
+
+    // the chunk that we hit and its entity and transform
+    let entity = event.target;
+    let chunk_transform = match chunk_query.get(entity){
+        Ok(transform) => transform,
+        Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
+    };
+
+    // event data hit position
+    let (pos, normal) = match (event.hit.position, event.hit.normal) {
+        (Some(pos), Some(normal)) => (pos, normal),
+        _ => return
+    };
+
+    // convert hit position to local chunk space
+    let local_pos = pos - chunk_transform.translation;
+    let pos = align_hit_pos(local_pos, normal);
+
+    highlight_transform.translation = pos.as_vec3() + chunk_transform.translation;
+}
 
 fn break_voxel(
     trigger: Trigger<Pointer<Click>>,
