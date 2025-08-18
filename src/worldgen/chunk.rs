@@ -238,8 +238,8 @@ fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
     let mut new_indices = Vec::with_capacity(faces.len() * 6);
 
     // map old vertex indices to new ones using a HashMap
-    let mut vertex_map = HashMap::with_capacity(max_vertices);
-    let mut next_vertex_id = 0u32;
+    let mut vertex_map = HashMap::with_capacity(16);
+    let mut next_vertex_id = 0;
 
     // process each face that we want in our mesh
     for face in faces {
