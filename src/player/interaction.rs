@@ -87,10 +87,9 @@ fn highlight_voxel(
     };
 
     // convert hit position to local chunk space
-    let local_pos = pos - chunk_transform.translation;
-    let pos = align_hit_pos_inward(local_pos, normal);
+    let pos = align_hit_pos_inward(pos, normal);
 
-    highlight_transform.translation = pos.as_vec3() + chunk_transform.translation;
+    highlight_transform.translation = pos.as_vec3();
 }
 
 fn break_voxel(
