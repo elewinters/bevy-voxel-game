@@ -8,8 +8,7 @@ impl Plugin for InteractionPlugin {
         app.add_systems(Startup, spawn_highlight_mesh);
 
         app.add_observer(highlight_voxel);
-        app.add_observer(break_voxel);
-        app.add_observer(place_voxel);
+        app.add_observer(manipulate_voxel);
     }
 }
 
@@ -89,25 +88,20 @@ fn highlight_voxel(
     highlight_transform.translation = pos.as_vec3();
 }
 
-fn break_voxel(
+// voxel breaking/placing
+fn manipulate_voxel(
     trigger: Trigger<Pointer<Click>>,
 
     mut commands: Commands,
     mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
 ) {
-    // only respond to left clicks
-    match trigger.button {
-        PointerButton::Primary => (),
-        _ => return
-    }
-
     // get event
     let event = trigger.event();
     let entity = event.target;
     
     // the chunk that we hit and its transform
     let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
-        Ok((chunk, transform)) => (chunk, transform),
+        Ok((chunk, chunk_transform)) => (chunk, chunk_transform),
         Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
     };
 
@@ -119,51 +113,30 @@ fn break_voxel(
 
     // convert hit position to local chunk space
     let local_pos = pos - chunk_transform.translation;
-    let pos = align_hit_pos_inward(local_pos, normal);
 
-    // remove hit voxel from voxel_positions, dont regenerate chunk if block doesn't exist
-    if !chunk.voxel_positions.remove(&pos) {
-        return;
-    }
-
-    // regenerate chunk
-    commands.trigger(chunk::RegenerateChunkEvent(entity))
-}
-
-fn place_voxel(
-    trigger: Trigger<Pointer<Click>>,
-
-    mut commands: Commands,
-    mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
-) {
-    // only respond to right clicks
     match trigger.button {
-        PointerButton::Secondary => (),
+        // voxel breaking
+        PointerButton::Primary => {
+            let pos = align_hit_pos_inward(local_pos, normal);
+
+            // remove hit voxel from voxel_positions
+            // dont regenerate chunk if block doesn't exist
+            if !chunk.voxel_positions.remove(&pos) {
+                return;
+            }
+        },
+        // voxel placing
+        PointerButton::Secondary => {
+            let pos = align_hit_pos_outward(local_pos, normal);
+
+            // add new voxel position to voxel_positions
+            // dont regenerate chunk if it already exists
+            if !chunk.voxel_positions.insert(pos) {
+                return;
+            }
+        },
         _ => return
     }
-
-    // get event
-    let event = trigger.event();
-    let entity = event.target;
-
-    // the chunk that we hit and its transform
-    let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
-        Ok((chunk, transform)) => (chunk, transform),
-        Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
-    };
-
-    // event data hit position
-    let (pos, normal) = match (event.hit.position, event.hit.normal) {
-        (Some(pos), Some(normal)) => (pos, normal),
-        _ => return
-    };
-
-    // convert hit position to local chunk space
-    let local_pos = pos - chunk_transform.translation;
-    let pos = align_hit_pos_outward(local_pos, normal);
-
-    // add new voxel position to voxel_positions
-    chunk.voxel_positions.insert(pos);
 
     // regenerate chunk
     commands.trigger(chunk::RegenerateChunkEvent(entity))
