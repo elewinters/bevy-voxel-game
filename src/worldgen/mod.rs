@@ -12,7 +12,7 @@ impl Plugin for WorldGenPlugin {
 
 fn spawn_atmosphere(mut commands: Commands) {
     // blue sky
-    commands.insert_resource(ClearColor(Color::linear_rgb(0.83, 0.96, 0.96)));
+    commands.insert_resource(ClearColor(Color::srgb_u8(225, 244, 244)));
 
     // some ambient light
     commands.insert_resource(AmbientLight {
