@@ -65,6 +65,13 @@ const SMOOTHNESS: f32 = 75.0;
 const HEIGHT_VARIATION: f32 = 50.0;
 
 /* -------------- */
+/*      types     */
+/* -------------  */
+// #tag types
+
+type ChunkGrid = HashSet<ChunkPosition>;
+
+/* -------------- */
 /*      enums     */
 /* -------------  */
 // #tag enums
@@ -113,7 +120,7 @@ struct ChunkTaskData {
 // #tag events
 
 #[derive(Event)]
-struct SpawnChunks(HashSet<ChunkPosition>);
+struct SpawnChunks(ChunkGrid);
 
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
@@ -175,8 +182,8 @@ fn align_pos_to_chunk(x: f32) -> i32 {
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
-fn generate_chunk_grid(current_chunk: &ChunkPosition) -> HashSet<ChunkPosition> {
-    let mut new_chunks: HashSet<ChunkPosition> = HashSet::with_capacity(CHUNK_GRID_LEN);
+fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
+    let mut new_chunks: ChunkGrid = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
 
     for x in -render_half..=render_half {
