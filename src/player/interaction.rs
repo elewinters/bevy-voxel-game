@@ -47,14 +47,12 @@ fn spawn_highlight_mesh(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mesh = Cuboid::from_length(1.01);
-
     commands.spawn((
         HighlightMesh,
         Pickable::IGNORE,
 
         Transform::from_xyz(0.0, 10.0, 0.0),
-        Mesh3d(meshes.add(mesh)),
+        Mesh3d(meshes.add(Cuboid::from_length(1.01))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: Color::srgba(0.1, 0.1, 0.1, 0.5),
             alpha_mode: AlphaMode::Blend,
