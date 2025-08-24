@@ -2,6 +2,9 @@ use bevy::core_pipeline::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::camera::Exposure;
 
+use bevy::core_pipeline::experimental::taa::{TemporalAntiAliasPlugin, TemporalAntiAliasing};
+use bevy::pbr::{ScreenSpaceAmbientOcclusion};
+
 use crate::*;
 
 mod movement;
@@ -11,6 +14,8 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_player);
+
+        app.add_plugins(TemporalAntiAliasPlugin);
 
         app.add_plugins(movement::MovementPlugin);
         app.add_plugins(interaction::InteractionPlugin);
@@ -55,12 +60,24 @@ fn spawn_player(mut commands: Commands) {
 
         // camera
         children![(
-            Camera3d::default(), 
+            Camera3d::default(),
+
+            Camera {
+                hdr: true,
+                ..default()
+            },
+
+            Msaa::Off,
+            ScreenSpaceAmbientOcclusion {
+                constant_object_thickness: 10.0,
+                ..default()
+            },
+            TemporalAntiAliasing::default(),
+
             Transform::from_xyz(0.0, 0.2, -0.1),
             Projection::from(PerspectiveProjection {fov: 90.0_f32.to_radians(),..default()}),
 
             Exposure::SUNLIGHT,
-            Bloom::NATURAL,
         )]
     ));
 }
