@@ -62,11 +62,6 @@ fn spawn_player(mut commands: Commands) {
         children![(
             Camera3d::default(),
 
-            Camera {
-                hdr: true,
-                ..default()
-            },
-
             Msaa::Off,
             ScreenSpaceAmbientOcclusion {
                 constant_object_thickness: 10.0,
@@ -75,7 +70,10 @@ fn spawn_player(mut commands: Commands) {
             TemporalAntiAliasing::default(),
 
             Transform::from_xyz(0.0, 0.2, -0.1),
-            Projection::from(PerspectiveProjection {fov: 90.0_f32.to_radians(),..default()}),
+            Projection::from(PerspectiveProjection {
+                fov: 90.0_f32.to_radians(),
+                ..default()
+            }),
 
             Exposure::SUNLIGHT,
         )]
