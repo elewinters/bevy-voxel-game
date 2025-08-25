@@ -265,15 +265,8 @@ fn startup(
     commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
 
     // purple test cube
-    let faces_to_keep = vec![
-        VoxelFace::Front,
-        VoxelFace::Back,
-        VoxelFace::Right,
-        VoxelFace::Left,
-        VoxelFace::Top,
-        VoxelFace::Bottom,
-    ];
-    let voxel_mesh = voxel::generate_voxel_mesh(faces_to_keep);
+    let faces = VoxelFace::all_faces();
+    let voxel_mesh = voxel::generate_voxel_mesh(faces);
 
     commands.spawn((
         Transform::from_xyz(0.0, 10.0, 0.0),
