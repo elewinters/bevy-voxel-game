@@ -64,12 +64,12 @@ fn spawn_debug_menu(mut commands: Commands) {
             (
                 FpsDisplay,
                 Text::new("FPS: N/A"),
-                TextColor(Color::from(Color::BLACK)),
+                TextColor(Color::BLACK),
             ),
             (
                 PlayerPositionDisplay,
                 Text::new("player position: N/A"),
-                TextColor(Color::from(Color::BLACK)),
+                TextColor(Color::BLACK),
             ),
         ],
     ));
