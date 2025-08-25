@@ -1,4 +1,3 @@
-use bevy::core_pipeline::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::camera::Exposure;
 
