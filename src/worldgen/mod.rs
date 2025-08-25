@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 pub mod chunk;
+mod voxel;
 
 pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
