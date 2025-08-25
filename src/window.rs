@@ -5,14 +5,49 @@ pub struct WindowPlugin;
 impl Plugin for WindowPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, (window_setup, cursor_lock));
-        app.add_systems(Update, (cursor_center, cursor_locking_on_esc));
+        app.add_systems(Update, cursor_locking_on_esc);
+
+        app.init_resource::<CursorLocked>();
     }
 }
+
+/* ------------------ */
+/*      resources     */
+/* ------------------ */
+// #tag resources
+
+#[derive(Resource, Default)]
+struct CursorLocked(bool);
+
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+// #tag resources
 
 // center the window
 fn window_setup(mut window: Single<&mut Window>) {
     window.position = WindowPosition::Centered(MonitorSelection::Current);
     window.present_mode = PresentMode::AutoNoVsync;
+}
+
+// enables us to unlock the cursor when we press esc
+fn cursor_locking_on_esc(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+
+    mut locked: ResMut<CursorLocked>
+) {
+    if keys.just_pressed(KeyCode::Escape) {
+        locked.0 = !(locked.0);
+
+        if locked.0 {
+            commands.run_system_cached(cursor_unlock);
+        }
+        else {
+            commands.run_system_cached(cursor_center);
+            commands.run_system_cached(cursor_lock);
+        }
+    }
 }
 
 fn cursor_center(mut window: Single<&mut Window>) {
@@ -21,25 +56,6 @@ fn cursor_center(mut window: Single<&mut Window>) {
         window.height() / 2.0,
     );
     window.set_cursor_position(Some(center));
-}
-
-// enables us to unlock the cursor when we press esc
-fn cursor_locking_on_esc(
-    mut commands: Commands,
-    keys: Res<ButtonInput<KeyCode>>,
-
-    mut locked: Local<bool>
-) {
-    if keys.just_pressed(KeyCode::Escape) {
-        *locked = !(*locked);
-
-        if *locked {
-            commands.run_system_cached(cursor_unlock);
-        }
-        else {
-            commands.run_system_cached(cursor_lock);
-        }
-    }
 }
 
 // locks the cursor (runs on startup)
