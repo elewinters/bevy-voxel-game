@@ -144,6 +144,8 @@ pub struct Chunk {
 #[derive(Bundle)]
 struct ChunkBundle(
     Chunk,
+    Name,
+
     Transform,
     Collider,
 
@@ -269,6 +271,8 @@ fn startup(
     let voxel_mesh = voxel::generate_voxel_mesh(faces);
 
     commands.spawn((
+        Name::new("Test Cube"),
+
         Transform::from_xyz(0.0, 10.0, 0.0),
         Mesh3d(meshes.add(voxel_mesh)),
         MeshMaterial3d(materials.add(Color::from(PURPLE)))
@@ -333,6 +337,7 @@ fn handle_chunk_tasks(
                         Chunk {
                             voxel_positions: chunk_data.voxel_positions[i].clone()
                         },
+                        Name::new("Chunk"),
 
                         chunk_data.transforms[i],
                         chunk_data.colliders[i].clone(),
@@ -441,6 +446,8 @@ fn regenerate_chunk(
     // spawn new chunk
     commands.spawn(ChunkBundle(
         chunk.clone(),
+        Name::new("Chunk"),
+        
         *chunk_transform, // this performs a copy
         collider,
 

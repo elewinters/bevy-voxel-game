@@ -41,6 +41,7 @@ fn spawn_player(mut commands: Commands) {
         Player { 
             fly: false 
         },
+        Name::new("Player"),
 
         Transform::from_xyz(0.0, 20.0, 0.0),
         Visibility::default(),

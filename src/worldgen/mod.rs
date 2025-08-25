@@ -24,6 +24,7 @@ fn spawn_atmosphere(mut commands: Commands) {
 
     // the sun
     commands.spawn((
+        Name::new("Sun"),
         DirectionalLight {
             illuminance: light_consts::lux::FULL_DAYLIGHT,
             shadows_enabled: true,

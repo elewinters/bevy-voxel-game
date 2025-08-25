@@ -49,6 +49,7 @@ fn spawn_highlight_mesh(
 ) {
     commands.spawn((
         HighlightMesh,
+        Name::new("Highlight Mesh"),
         Pickable::IGNORE,
 
         Transform::from_xyz(0.0, 10.0, 0.0),
