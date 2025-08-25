@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::color::palettes::css::*;
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
+use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 
 use bevy_rapier3d::prelude::*;
 
@@ -35,6 +36,8 @@ fn main() {
             MeshPickingPlugin,
             RapierPhysicsPlugin::<NoUserData>::default(),
             //RapierDebugRenderPlugin::default(),
+            EguiPlugin::default(),
+            WorldInspectorPlugin::default(),
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
                     text_config: TextFont {
