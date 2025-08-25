@@ -324,36 +324,34 @@ fn handle_chunk_tasks(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // remove tasks from the queue that have finished and have spawned successfully
-    queue.0.retain_mut(|task| {
-        match block_on(future::poll_once(task)) {
-            Some(chunk_data) => {
-                let len = chunk_data.voxel_positions.len();
+    queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
+        Some(chunk_data) => {
+            let len = chunk_data.voxel_positions.len();
 
-                // we push Bundles into this vector because spawn_batch is faster than individually spawning
-                let mut chunk_bundles = Vec::with_capacity(len);
+            // we push Bundles into this vector because spawn_batch is faster than individually spawning
+            let mut chunk_bundles = Vec::with_capacity(len);
 
-                for i in 0..len {
-                    chunk_bundles.push(ChunkBundle(
-                        Chunk {
-                            voxel_positions: chunk_data.voxel_positions[i].clone()
-                        },
-                        Name::new("Chunk"),
+            for i in 0..len {
+                chunk_bundles.push(ChunkBundle(
+                    Chunk {
+                        voxel_positions: chunk_data.voxel_positions[i].clone()
+                    },
+                    Name::new("Chunk"),
 
-                        chunk_data.transforms[i],
-                        chunk_data.colliders[i].clone(),
+                    chunk_data.transforms[i],
+                    chunk_data.colliders[i].clone(),
 
-                        Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
-                        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
-                    ));
-                }
-                
-                commands.spawn_batch(chunk_bundles);
-
-                // remove from the queue, as the task has finished 
-                false
+                    Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
+                    MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                ));
             }
-            None => true, // keep it in the queue, as the task is still processing
+            
+            commands.spawn_batch(chunk_bundles);
+
+            // remove from the queue, as the task has finished 
+            false
         }
+        None => true, // keep it in the queue, as the task is still processing
     });
 }
 
