@@ -8,8 +8,8 @@ use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_rapier3d::prelude::*;
 
 mod player;
-mod window;
 mod worldgen;
+pub mod window;
 
 /* 
     TODO:

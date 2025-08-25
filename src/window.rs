@@ -7,7 +7,7 @@ impl Plugin for WindowPlugin {
         app.add_systems(Startup, (window_setup, cursor_lock));
         app.add_systems(Update, cursor_locking_on_esc);
 
-        app.init_resource::<CursorLocked>();
+        app.insert_resource(CursorLocked(true));
     }
 }
 
@@ -16,8 +16,8 @@ impl Plugin for WindowPlugin {
 /* ------------------ */
 // #tag resources
 
-#[derive(Resource, Default)]
-struct CursorLocked(bool);
+#[derive(Resource)]
+pub struct CursorLocked(pub bool);
 
 /* ---------------- */
 /*      systems     */
@@ -40,7 +40,7 @@ fn cursor_locking_on_esc(
     if keys.just_pressed(KeyCode::Escape) {
         locked.0 = !(locked.0);
 
-        if locked.0 {
+        if !locked.0 {
             commands.run_system_cached(cursor_unlock);
         }
         else {

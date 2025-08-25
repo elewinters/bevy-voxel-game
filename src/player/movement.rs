@@ -3,6 +3,7 @@ use bevy::input::mouse::MouseMotion;
 use bevy_rapier3d::control::KinematicCharacterController;
 
 use crate::player::*;
+use crate::window;
 
 pub struct MovementPlugin;
 impl Plugin for MovementPlugin {
@@ -97,8 +98,13 @@ fn look_player(
     mut camera_transform: Single<&mut Transform, With<Camera>>,
     mut mouse_events: EventReader<MouseMotion>,
 
-    mut look: Local<Vec2>
+    mut look: Local<Vec2>,
+    cursor_locked: Res<window::CursorLocked>
 ) {
+    if !cursor_locked.0 {
+        return;
+    }
+
     for event in mouse_events.read() {
         look.x -= event.delta.x * MOUSE_SENSITIVITY;
         look.y -= event.delta.y * MOUSE_SENSITIVITY;
