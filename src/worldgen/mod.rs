@@ -18,7 +18,7 @@ fn spawn_atmosphere(mut commands: Commands) {
     // some ambient light
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 5_000.0,
+        brightness: 10_000.0,
         affects_lightmapped_meshes: true,
     });
 
