@@ -58,9 +58,11 @@ const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
 
 // noise algorithm constants
-const FREQUENCY: f32 = 0.007; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
+const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
 const HEIGHT_VARIATION: f32 = 50.0;
-const EXPONENT: f32 = 1.05;
+
+const VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
+const VALLEY_SMOOTHNESS: f32 = 3.5; // how smooth valleys are
 
 /* -------------- */
 /*      types     */
@@ -185,8 +187,14 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
 }
 
 fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
-    let y = perlin_noise.get_noise_2d(x, z) * HEIGHT_VARIATION;
-    let y = y.powf(EXPONENT);
+    let y = perlin_noise.get_noise_2d(x, z);
+
+    let y = if y < VALLEY_THRESHOLD {
+        y * HEIGHT_VARIATION / VALLEY_SMOOTHNESS
+    }
+    else {
+        y * HEIGHT_VARIATION
+    };
 
     y.floor()
 }
