@@ -58,9 +58,9 @@ const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
 
 // noise algorithm constants
-const SCALE: f32 = 0.5; // number from 0.0 to 1.0
-const SMOOTHNESS: f32 = 75.0;
+const FREQUENCY: f32 = 0.007; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
 const HEIGHT_VARIATION: f32 = 50.0;
+const EXPONENT: f32 = 1.05;
 
 /* -------------- */
 /*      types     */
@@ -185,9 +185,10 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
 }
 
 fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
-    let noise_y = perlin_noise.get_noise_2d(x / SMOOTHNESS, z / SMOOTHNESS) * HEIGHT_VARIATION;
+    let y = perlin_noise.get_noise_2d(x, z) * HEIGHT_VARIATION;
+    let y = y.powf(EXPONENT);
 
-    noise_y.floor()
+    y.floor()
 }
 
 fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
@@ -258,7 +259,7 @@ fn startup(
 ) {
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
-    noise.set_frequency(Some(SCALE));
+    noise.set_frequency(Some(FREQUENCY));
     noise.set_noise_type(Some(NoiseType::Perlin));
 
     commands.insert_resource(Noise(Arc::new(noise)));
