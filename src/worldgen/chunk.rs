@@ -62,7 +62,8 @@ const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lo
 const HEIGHT_VARIATION: f32 = 50.0;
 
 const VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
-const VALLEY_SMOOTHNESS: f32 = 3.5; // how smooth valleys are
+const VALLEY_SMOOTHNESS: f32 = 1.5; // how smooth valleys are
+const VALLEY_STEP: f32 = 2.5; // how much smoother the valleys should get the lower they are
 
 /* -------------- */
 /*      types     */
@@ -189,11 +190,14 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
 fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     let y = perlin_noise.get_noise_2d(x, z);
 
+    // valley
     let y = if y < VALLEY_THRESHOLD {
-        y * HEIGHT_VARIATION / VALLEY_SMOOTHNESS
+        // we multiply VALLEY_SMOOTHNESS by (y.floor().abs() * VALLEY_STEP) so that the deeper the valley the smoother it is
+        y * HEIGHT_VARIATION / (VALLEY_SMOOTHNESS * (y.floor().abs() * VALLEY_STEP))
     }
+    // normal terrain
     else {
-        y * HEIGHT_VARIATION
+        (y * HEIGHT_VARIATION).powf(1.1)
     };
 
     y.floor()
