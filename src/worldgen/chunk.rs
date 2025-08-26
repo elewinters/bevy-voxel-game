@@ -63,7 +63,7 @@ const HEIGHT_VARIATION: f32 = 50.0;
 
 const VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
 const VALLEY_SMOOTHNESS: f32 = 1.5; // how smooth valleys are
-const VALLEY_STEP: f32 = 2.5; // how much smoother the valleys should get the lower they are
+const VALLEY_STEP: f32 = 0.35; // how much smoother the valleys should get the lower they are, lower values smoothen while higher values roughen
 
 /* -------------- */
 /*      types     */
@@ -192,8 +192,8 @@ fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
 
     // valley
     let y = if y < VALLEY_THRESHOLD {
-        // we multiply VALLEY_SMOOTHNESS by (y.floor().abs() * VALLEY_STEP) so that the deeper the valley the smoother it is
-        y * HEIGHT_VARIATION / (VALLEY_SMOOTHNESS * (y.floor().abs() * VALLEY_STEP))
+        // we multiply VALLEY_SMOOTHNESS by (VALLEY_STEP.powf(y) so that the deeper the valley the smoother it is
+        y * HEIGHT_VARIATION / (VALLEY_SMOOTHNESS * (VALLEY_STEP.powf(y)))
     }
     // normal terrain
     else {
