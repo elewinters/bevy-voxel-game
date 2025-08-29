@@ -1,3 +1,4 @@
+use bevy::input::common_conditions::input_toggle_active;
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy::diagnostic::DiagnosticsStore;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
@@ -24,7 +25,7 @@ impl Plugin for DebugPlugin {
 
         app.add_plugins((
             EguiPlugin::default(),
-            WorldInspectorPlugin::default(),
+            WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::Tab)),
         ));
     }
 }
@@ -55,6 +56,8 @@ fn spawn_debug_menu(mut commands: Commands) {
     commands.spawn((
         DebugMenu,
         Name::new("Debug Menu"),
+
+        Visibility::Hidden,
 
         Node {
             display: Display::Grid,
