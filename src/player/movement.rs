@@ -4,6 +4,7 @@ use bevy_rapier3d::control::KinematicCharacterController;
 
 use crate::player::*;
 use crate::window;
+use crate::worldgen::chunk;
 
 pub struct MovementPlugin;
 impl Plugin for MovementPlugin {
@@ -41,8 +42,15 @@ fn move_player(
     mut controller: Single<&mut KinematicCharacterController, With<Player>>,
     controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
 
+    chunk_query: Query<&chunk::Chunk>,
+
     mut gravity: Local<f32>,
 ) {
+    // do not allow player to move if the chunks have not loaded yet
+    if chunk_query.is_empty() {
+        return;
+    }
+
     let mut input = Vec3::default();
 
     if keyboard.pressed(KeyCode::KeyW) {
