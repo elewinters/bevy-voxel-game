@@ -16,6 +16,7 @@ impl Plugin for DebugPlugin {
 
             update_fps,
             update_player_position,
+            update_chunk_queue
         ));
 
         app.add_observer(update_current_chunk);
@@ -46,6 +47,9 @@ pub struct PlayerPositionDisplay;
 
 #[derive(Component)]
 pub struct CurrentChunkDisplay;
+
+#[derive(Component)]
+pub struct ChunkQueueDisplay;
 
 /* ---------------- */
 /*      systems     */
@@ -84,6 +88,11 @@ fn spawn_debug_menu(mut commands: Commands) {
             (
                 CurrentChunkDisplay,
                 Text::new("current chunk: N/A"),
+                TextColor(Color::BLACK)
+            ),
+            (
+                ChunkQueueDisplay,
+                Text::new("chunk queue: N/A"),
                 TextColor(Color::BLACK)
             )
         ],
@@ -128,4 +137,11 @@ fn update_current_chunk(
 ) {
     let pos = event.event().0.clone();
     **display = Text::new(format!("current chunk: [{}, {}]", pos.x, pos.z))
+}
+
+fn update_chunk_queue(
+    chunk_queue: Res<chunk::ChunkQueue>,
+    mut display: Single<&mut Text, With<ChunkQueueDisplay>>
+) {
+    **display = Text::new(format!("chunk queue: {}", chunk_queue.0.len()))
 }

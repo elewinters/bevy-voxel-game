@@ -50,7 +50,7 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 // #tag constants
 
-const RENDER_DISTANCE: i32 = 32;
+const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -85,7 +85,7 @@ impl ChunkPosition {
 }
 
 #[derive(Default)]
-struct ChunkTaskData {
+pub struct ChunkTaskData {
     voxel_positions: Vec<HashSet<IVec3>>,
 
     transforms: Vec<Transform>,
@@ -118,7 +118,7 @@ pub struct RegenerateChunk(pub Entity);
 struct Noise(Arc<FastNoiseLite>);
 
 #[derive(Resource, Default)]
-struct ChunkQueue(Vec<Task<ChunkTaskData>>);
+pub struct ChunkQueue(pub Vec<Task<ChunkTaskData>>);
 
 /* ------------------- */
 /*      components     */
