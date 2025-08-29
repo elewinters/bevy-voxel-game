@@ -82,9 +82,14 @@ fn move_player(
     
     // make the player faster when flying
     if player.fly {
+        controller.filter_flags = QueryFilterFlags::all();
+
         input.x *= 4.0;
         input.y *= 2.0;
         input.z *= 4.0;
+    }
+    else {
+        controller.filter_flags = QueryFilterFlags::empty();
     }
 
     // this is where we actually move the player

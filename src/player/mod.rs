@@ -49,6 +49,7 @@ fn spawn_player(mut commands: Commands) {
 
         KinematicCharacterController {
             custom_mass: Some(5.0),
+            filter_flags: QueryFilterFlags::empty(),
             
             max_slope_climb_angle: 45.0_f32.to_radians(), // don't allow climbing slopes larger than 45 degrees
             min_slope_slide_angle: 30.0_f32.to_radians(), // automatically slide down on slopes smaller than 30 degrees
