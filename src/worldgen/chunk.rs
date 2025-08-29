@@ -12,6 +12,7 @@ use fastnoise_lite::*;
 use crate::player;
 use super::voxel;
 use super::voxel::VoxelFace;
+use super::noise;
 
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
@@ -49,21 +50,12 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 // #tag constants
 
-// chunk generation constants
 const RENDER_DISTANCE: i32 = 32;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
-
-// noise algorithm constants
-const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
-const HEIGHT_VARIATION: f32 = 10.0;
-
-const VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
-const VALLEY_SMOOTHNESS: f32 = 1.5; // how smooth valleys are
-const VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get the lower they are
 
 /* -------------- */
 /*      types     */
@@ -187,23 +179,6 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
     new_chunks
 }
 
-fn generate_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
-    let plains = perlin_noise.get_noise_2d(x, z);
-    let hills = perlin_noise.get_noise_2d(x / 5.0, z / 5.0) * 50.0;
-
-    // valley
-    let plains = if plains < VALLEY_THRESHOLD {
-        // we multiply VALLEY_SMOOTHNESS by (VALLEY_STEP.powf(y) so that the deeper the valley the smoother it is
-        plains * HEIGHT_VARIATION / (VALLEY_SMOOTHNESS * (VALLEY_STEP.powf(plains.abs())))
-    }
-    // normal terrain
-    else {
-        (plains * HEIGHT_VARIATION).powf(1.1)
-    };
-
-    (plains + hills).floor()
-}
-
 fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
@@ -216,7 +191,7 @@ fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPositio
                 // determine position
                 let voxel_position = Vec3::new(
                     x as f32,
-                    generate_noise(
+                    noise::generate_noise(
                         noise,
 
                         x as f32 + chunk_pos.x as f32,
@@ -272,7 +247,7 @@ fn startup(
 ) {
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
-    noise.set_frequency(Some(FREQUENCY));
+    noise.set_frequency(Some(noise::FREQUENCY));
     noise.set_noise_type(Some(NoiseType::Perlin));
 
     commands.insert_resource(Noise(Arc::new(noise)));
