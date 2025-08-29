@@ -115,6 +115,9 @@ pub struct RegenerateChunk(pub Entity);
 // #tag resources
 
 #[derive(Resource)]
+struct GlobalMaterial(Handle<StandardMaterial>);
+
+#[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
 
 #[derive(Resource, Default)]
@@ -245,6 +248,10 @@ fn startup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // setup global material
+    let global_material = materials.add(Color::from(LAWN_GREEN));
+    commands.insert_resource(GlobalMaterial(global_material));
+
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
     noise.set_frequency(Some(noise::FREQUENCY));
@@ -310,7 +317,7 @@ fn handle_chunk_tasks(
     mut queue: ResMut<ChunkQueue>,
 
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    global_material: Res<GlobalMaterial>,
 ) {
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
@@ -331,7 +338,7 @@ fn handle_chunk_tasks(
                     chunk_data.colliders[i].clone(),
 
                     Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
-                    MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+                    MeshMaterial3d(global_material.0.clone()),
                 ));
             }
             
@@ -412,7 +419,7 @@ fn regenerate_chunk(
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    global_material: Res<GlobalMaterial>,
 
     chunk_query: Query<(&Chunk, &Transform)>,
 ) {
@@ -439,6 +446,6 @@ fn regenerate_chunk(
         collider,
 
         Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(materials.add(Color::from(LAWN_GREEN))),
+        MeshMaterial3d(global_material.0.clone()),
     ));
 }
