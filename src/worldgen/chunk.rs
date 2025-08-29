@@ -242,8 +242,8 @@ fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
 fn startup(
     mut commands: Commands,
 
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // setup global material
     let global_material = materials.add(Color::from(LAWN_GREEN));
@@ -260,15 +260,17 @@ fn startup(
     commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
 
     // purple test cube
-    let faces = VoxelFace::all_faces();
-    let voxel_mesh = voxel::generate_voxel_mesh(faces);
-
     commands.spawn((
         Name::new("test cube"),
 
-        Transform::from_xyz(0.0, 10.0, 0.0),
-        Mesh3d(meshes.add(voxel_mesh)),
-        MeshMaterial3d(materials.add(Color::from(PURPLE)))
+        Transform {
+            translation: Vec3::new(3.0, -0.5, 3.0),
+            scale: Vec3::new(8.0, 8.0, 8.0),
+            ..default()
+        },
+        SceneRoot(
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
+        ),
     ));
 }
 
