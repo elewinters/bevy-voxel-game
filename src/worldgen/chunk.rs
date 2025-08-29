@@ -81,9 +81,9 @@ type ChunkGrid = HashSet<ChunkPosition>;
 // this also makes loads of other things easier
 // but at the end of the day this is just the actual world coordinate data for the chunk, we just cast it to f32 when we want to spawn it
 #[derive(Default, Clone, Eq, PartialEq, Hash)]
-struct ChunkPosition {
-    x: i32,
-    z: i32
+pub struct ChunkPosition {
+    pub x: i32,
+    pub z: i32
 }
 
 impl ChunkPosition {
@@ -112,7 +112,7 @@ struct SpawnChunks(ChunkGrid);
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
 #[derive(Event)]
-struct ChunkChanged(ChunkPosition);
+pub struct ChunkChanged(pub ChunkPosition);
 
 #[derive(Event)]
 pub struct RegenerateChunk(pub Entity);

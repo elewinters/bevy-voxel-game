@@ -4,16 +4,20 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 use bevy::prelude::*;
 use crate::player;
+use crate::worldgen::chunk;
 
 pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_debug_menu);
         app.add_systems(Update, (
-            hide_menu, 
-            update_fps, 
-            update_player_position
+            hide_menu,
+
+            update_fps,
+            update_player_position,
         ));
+
+        app.add_observer(update_current_chunk);
 
         //app.add_plugins(RapierDebugRenderPlugin::default());
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
@@ -38,6 +42,9 @@ pub struct FpsDisplay;
 
 #[derive(Component)]
 pub struct PlayerPositionDisplay;
+
+#[derive(Component)]
+pub struct CurrentChunkDisplay;
 
 /* ---------------- */
 /*      systems     */
@@ -71,6 +78,11 @@ fn spawn_debug_menu(mut commands: Commands) {
                 Text::new("player position: N/A"),
                 TextColor(Color::BLACK),
             ),
+            (
+                CurrentChunkDisplay,
+                Text::new("current chunk: N/A"),
+                TextColor(Color::BLACK)
+            )
         ],
     ));
 }
@@ -105,4 +117,12 @@ fn update_player_position(
     mut display: Single<&mut Text, With<PlayerPositionDisplay>>
 ) {
     **display = Text::new(format!("player position: {}", player_position.translation.trunc()))
+}
+
+fn update_current_chunk(
+    event: Trigger<chunk::ChunkChanged>,
+    mut display: Single<&mut Text, With<CurrentChunkDisplay>>
+) {
+    let pos = event.event().0.clone();
+    **display = Text::new(format!("current chunk: [{}, {}]", pos.x, pos.z))
 }
