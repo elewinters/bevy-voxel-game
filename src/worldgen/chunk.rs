@@ -37,12 +37,9 @@ impl Plugin for ChunkPlugin {
 /* 
     TODO:
         MAYBE:
-        - frustum culling
-        - occlusion culling
         - some simple & fast greedy meshing
         - LODs (probably not)
-        - data compression with funky bitwise stuff
-        - speed up chunk generation
+        - speed up chunk generation (optimize compute_chunk_mesh and generate_voxel_mesh)
 */
 
 /* ------------------ */
