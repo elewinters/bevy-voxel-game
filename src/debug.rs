@@ -59,7 +59,7 @@ pub struct ChunkQueueDisplay;
 fn spawn_debug_menu(mut commands: Commands) {
     commands.spawn((
         DebugMenu,
-        Name::new("Debug Menu"),
+        Name::new("debug menu"),
 
         Visibility::Hidden,
 
