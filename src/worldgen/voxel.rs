@@ -37,7 +37,7 @@ impl VoxelFace {
 /* ------------------ */
 // #tag functions
 
-pub fn generate_voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
+pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
     let source_mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
     
     // extract attributes from source mesh

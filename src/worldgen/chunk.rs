@@ -194,7 +194,7 @@ pub fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
-fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
+fn chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
     let mut new_chunks: ChunkGrid = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
 
@@ -210,7 +210,7 @@ fn generate_chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
     new_chunks
 }
 
-fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
+fn chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
     let mut voxel_positions: HashSet<IVec3> = HashSet::with_capacity(CHUNK_LEN);
@@ -240,7 +240,7 @@ fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPositio
     voxel_positions
 }
 
-fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
+fn chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
@@ -252,7 +252,7 @@ fn compute_chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
         faces.retain(|face| voxel::should_draw_face(face, voxel_pos, voxel_positions));
 
         // merge mesh
-        let mut voxel_mesh = voxel::generate_voxel_mesh(faces);
+        let mut voxel_mesh = voxel::voxel_mesh(faces);
         voxel_mesh.translate_by(voxel_pos.as_vec3());
         
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
@@ -319,8 +319,8 @@ fn spawn_chunk_tasks(
         let mut data = ChunkTaskData::default();
 
         for chunk_pos in chunk_positions.iter() {
-            let voxel_positions = compute_chunk_voxel_positions(&noise, chunk_pos);
-            let (mesh, collider) = compute_chunk_mesh(&voxel_positions);
+            let voxel_positions = chunk_voxel_positions(&noise, chunk_pos);
+            let (mesh, collider) = chunk_mesh(&voxel_positions);
 
             data.voxel_positions.push(voxel_positions);
             data.transforms.push(Transform::from_xyz(
@@ -388,7 +388,7 @@ fn spawn_chunks_around_player(
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = generate_chunk_grid(&trigger.event().0);
+    let mut new_chunks = chunk_grid(&trigger.event().0);
 
     // get existing chunks
     let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
@@ -410,7 +410,7 @@ fn despawn_chunks(
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let chunk_grid = generate_chunk_grid(&trigger.event().0);
+    let chunk_grid = chunk_grid(&trigger.event().0);
 
     // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
@@ -463,7 +463,7 @@ fn regenerate_chunk(
     commands.entity(entity).despawn();
 
     // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = compute_chunk_mesh(&chunk.voxel_positions);
+    let (mesh, collider) = chunk_mesh(&chunk.voxel_positions);
 
     // spawn new chunk
     commands.spawn(ChunkBundle(
