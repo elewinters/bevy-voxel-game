@@ -13,6 +13,7 @@ use crate::player;
 use super::voxel;
 use super::voxel::VoxelFace;
 use super::noise;
+use super::structures;
 
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
@@ -317,17 +318,15 @@ fn handle_chunk_tasks(
 
     mut meshes: ResMut<Assets<Mesh>>,
     global_material: Res<GlobalMaterial>,
+    assets: Res<AssetServer>
 ) {
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
         Some(chunk_data) => {
             let len = chunk_data.voxel_positions.len();
 
-            // we push Bundles into this vector because spawn_batch is faster than individually spawning
-            let mut chunk_bundles = Vec::with_capacity(len);
-
             for i in 0..len {
-                chunk_bundles.push(ChunkBundle(
+                let mut chunk = commands.spawn(ChunkBundle(
                     Chunk {
                         voxel_positions: chunk_data.voxel_positions[i].clone()
                     },
@@ -339,9 +338,12 @@ fn handle_chunk_tasks(
                     Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
                     MeshMaterial3d(global_material.0.clone()),
                 ));
+
+                let structures = structures::generate_structures(&assets, chunk_data.voxel_positions[i].clone());
+                for structure in structures {
+                    chunk.with_child(structure);
+                }
             }
-            
-            commands.spawn_batch(chunk_bundles);
 
             // remove from the queue, as the task has finished 
             false

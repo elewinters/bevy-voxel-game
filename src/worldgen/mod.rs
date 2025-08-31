@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 pub mod chunk;
 pub mod noise;
+mod structures;
 mod voxel;
 
 pub struct WorldGenPlugin;
