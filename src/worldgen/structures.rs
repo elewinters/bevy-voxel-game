@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use fastnoise_lite::*;
 
 use super::chunk::Chunk;
 
@@ -16,29 +17,35 @@ impl Plugin for StructuresPlugin {
 
 fn trees(
     event: Trigger<OnAdd, Chunk>,
-    query: Query<&Chunk>,
+    query: Query<(&Chunk, &Transform)>,
 
     mut commands: Commands,
     assets: Res<AssetServer>
 ) {
     let chunk_entity = event.target();
-    let chunk = query.get(chunk_entity).unwrap();
-    let first_position = chunk.voxel_positions.iter().next().unwrap();
+    let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
     
-    let x = first_position.x as f32;
-    let y = first_position.y as f32 + 0.5;
-    let z = first_position.z as f32;
+    let mut noise = FastNoiseLite::with_seed(512);
+    noise.set_frequency(Some(0.5));
+    noise.set_noise_type(Some(NoiseType::Perlin));
 
-    commands.get_entity(chunk_entity).unwrap().with_child((
-        Name::new("tree"),
+    for local_pos in &chunk.voxel_positions {
+        let global_pos = local_pos.as_vec3() - chunk_transform.translation;
+        let value = noise.get_noise_2d(global_pos.x, global_pos.z);
 
-        Transform {
-            translation: Vec3::new(x, y, z),
-            scale: Vec3::new(8.0, 8.0, 8.0),
-            ..default()
-        },
-        SceneRoot(
-            assets.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
-        ),
-    ));
+        if value > 0.75 {
+            commands.get_entity(chunk_entity).unwrap().with_child((
+            Name::new("tree"),
+
+            Transform {
+                translation: Vec3::new(local_pos.x as f32, local_pos.y as f32 + 0.5, local_pos.z as f32),
+                scale: Vec3::new(8.0, 8.0, 8.0),
+                ..default()
+            },
+            SceneRoot(
+                assets.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
+            ),
+        ));
+        }
+    }
 }
