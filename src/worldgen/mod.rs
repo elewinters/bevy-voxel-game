@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
 pub mod chunk;
-pub mod noise;
 mod structures;
 mod voxel;
 
@@ -12,6 +11,11 @@ impl Plugin for WorldGenPlugin {
         app.add_plugins(chunk::ChunkPlugin);
     }
 }
+
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+// #tag systems
 
 fn spawn_atmosphere(mut commands: Commands) {
     // blue sky

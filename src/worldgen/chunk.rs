@@ -10,9 +10,7 @@ use bevy_rapier3d::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
-use super::voxel;
-use super::voxel::VoxelFace;
-use super::noise;
+use super::{voxel, voxel::VoxelFace};
 use super::structures;
 
 pub struct ChunkPlugin;
@@ -51,12 +49,24 @@ impl Plugin for ChunkPlugin {
 /* ------------------ */
 // #tag constants
 
+// chunk gen constants
 const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
+
+// noise constants
+const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
+
+const PLAINS_HEIGHT_VARIATION: f32 = 10.0;
+const PLAINS_VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
+const PLAINS_VALLEY_SMOOTHNESS: f32 = 1.5; // how smooth valleys are
+const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get the lower they are
+
+const HILLS_HEIGHT_VARIATION: f32 = 50.0;
+const HILLS_WAVELENGTH: f32 = 5.0;
 
 /* -------------- */
 /*      types     */
@@ -163,6 +173,23 @@ fn align_pos_to_chunk(x: f32) -> i32 {
     ((x / chunk_size).floor() * chunk_size) as i32
 }
 
+pub fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
+    let plains = perlin_noise.get_noise_2d(x, z);
+    let hills = perlin_noise.get_noise_2d(x / HILLS_WAVELENGTH, z / HILLS_WAVELENGTH) * HILLS_HEIGHT_VARIATION;
+
+    // plains valleys
+    let plains = if plains < PLAINS_VALLEY_THRESHOLD {
+        // we multiply VALLEY_SMOOTHNESS by (VALLEY_STEP.powf(y) so that the deeper the valley the smoother it is
+        plains * PLAINS_HEIGHT_VARIATION / (PLAINS_VALLEY_SMOOTHNESS * (PLAINS_VALLEY_STEP.powf(plains.abs())))
+    }
+    // normal plains
+    else {
+        (plains * PLAINS_HEIGHT_VARIATION).powf(1.1)
+    };
+
+    (plains + hills).floor()
+}
+
 /*
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
@@ -195,7 +222,7 @@ fn compute_chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPositio
                 // determine position
                 let voxel_position = Vec3::new(
                     x as f32,
-                    noise::generate_noise(
+                    terrain_noise(
                         noise,
 
                         x as f32 + chunk_pos.x as f32,
@@ -249,23 +276,22 @@ fn startup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    // setup global material
-    let global_material = materials.add(Color::from(LAWN_GREEN));
-    commands.insert_resource(GlobalMaterial(global_material));
-
     // setup noise resource
     let mut noise = FastNoiseLite::with_seed(512);
-    noise.set_frequency(Some(noise::FREQUENCY));
+    noise.set_frequency(Some(FREQUENCY));
     noise.set_noise_type(Some(NoiseType::Perlin));
-
     commands.insert_resource(Noise(Arc::new(noise)));
+
+    // setup global material resource
+    let global_material = materials.add(Color::from(LAWN_GREEN));
+    commands.insert_resource(GlobalMaterial(global_material));
 
     // triggers the ChunkChanged event so that we actually spawn somewhere
     commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
 
-    // purple test cube
+    // purple test entity
     commands.spawn((
-        Name::new("test cube"),
+        Name::new("test entity"),
 
         Transform {
             translation: Vec3::new(3.0, -0.5, 3.0),
