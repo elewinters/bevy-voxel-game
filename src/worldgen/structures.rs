@@ -1,22 +1,36 @@
-use std::collections::HashSet;
 use bevy::prelude::*;
 
-#[derive(Bundle, Clone)]
-pub struct StructureBundle(
-    Name,
-    Transform,
-    SceneRoot
-);
+use super::chunk::Chunk;
 
-fn trees(assets: &AssetServer, voxel_positions: &HashSet<IVec3>) -> StructureBundle {
-    let first_position = voxel_positions.iter().next().unwrap();
+pub struct StructuresPlugin;
+impl Plugin for StructuresPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(trees);
+    }
+}
+
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+// #tag systems
+
+fn trees(
+    event: Trigger<OnAdd, Chunk>,
+    query: Query<&Chunk>,
+
+    mut commands: Commands,
+    assets: Res<AssetServer>
+) {
+    let chunk_entity = event.target();
+    let chunk = query.get(chunk_entity).unwrap();
+    let first_position = chunk.voxel_positions.iter().next().unwrap();
     
     let x = first_position.x as f32;
     let y = first_position.y as f32 + 0.5;
     let z = first_position.z as f32;
 
-    StructureBundle(
-        Name::new("test cube"),
+    commands.get_entity(chunk_entity).unwrap().with_child((
+        Name::new("tree"),
 
         Transform {
             translation: Vec3::new(x, y, z),
@@ -26,12 +40,5 @@ fn trees(assets: &AssetServer, voxel_positions: &HashSet<IVec3>) -> StructureBun
         SceneRoot(
             assets.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
         ),
-    )
-}
-
-pub fn generate_structures(assets: &AssetServer, voxel_positions: HashSet<IVec3>) -> Vec<StructureBundle> {
-    let mut vec = Vec::new();
-    vec.push(trees(assets, &voxel_positions));
-
-    vec
+    ));
 }

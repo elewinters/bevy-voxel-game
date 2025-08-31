@@ -18,6 +18,9 @@ use super::structures;
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
+        // add structures plugin
+        app.add_plugins(structures::StructuresPlugin);
+        
         app.add_systems(Update, update_current_chunk);
         app.add_systems(Startup, startup);
 
@@ -318,15 +321,18 @@ fn handle_chunk_tasks(
 
     mut meshes: ResMut<Assets<Mesh>>,
     global_material: Res<GlobalMaterial>,
-    assets: Res<AssetServer>
 ) {
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
         Some(chunk_data) => {
             let len = chunk_data.voxel_positions.len();
+            
+            // it is better to use spawn_batch here rather than individually spawning each entity
+            // however, because of a bug in the bevy engine this breaks the OnAdd hook for chunks, causing structure generation to crash [https://github.com/bevyengine/bevy/issues/19356]
+            // this has been fixed in bevy 0.17, so as soon as that releases this will use spawn_batch instead 
 
             for i in 0..len {
-                let mut chunk = commands.spawn(ChunkBundle(
+                commands.spawn(ChunkBundle(
                     Chunk {
                         voxel_positions: chunk_data.voxel_positions[i].clone()
                     },
@@ -338,11 +344,6 @@ fn handle_chunk_tasks(
                     Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
                     MeshMaterial3d(global_material.0.clone()),
                 ));
-
-                let structures = structures::generate_structures(&assets, chunk_data.voxel_positions[i].clone());
-                for structure in structures {
-                    chunk.with_child(structure);
-                }
             }
 
             // remove from the queue, as the task has finished 
