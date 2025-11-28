@@ -69,13 +69,6 @@ const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get
 const HILLS_HEIGHT_VARIATION: f32 = 50.0;
 const HILLS_WAVELENGTH: f32 = 5.0;
 
-/* -------------- */
-/*      types     */
-/* -------------  */
-// #tag types
-
-type ChunkGrid = HashSet<ChunkPosition>;
-
 /* ---------------- */
 /*      structs     */
 /* ---------------- */
@@ -191,8 +184,8 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
-fn chunk_grid(current_chunk: &ChunkPosition) -> ChunkGrid {
-    let mut new_chunks: ChunkGrid = HashSet::with_capacity(CHUNK_GRID_LEN);
+fn chunk_grid(current_chunk: &ChunkPosition) -> HashSet<ChunkPosition> {
+    let mut new_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
 
     for x in -render_half..=render_half {
