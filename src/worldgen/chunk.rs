@@ -307,12 +307,12 @@ fn startup(
 // reacts to the SpawnChunks event and spawns a Task that computes all the chunks with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
-    trigger: Trigger<SpawnChunks>,
+    event: On<SpawnChunks>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
     let noise = Arc::clone(&noise.0);
-    let chunk_positions = Arc::new(trigger.event().0.clone());
+    let chunk_positions = Arc::new(event.0.clone());
     
     // spawn task that computes the specified chunks, returning their positions, meshes and colliders
     let task = AsyncComputeTaskPool::get().spawn(async move {
@@ -382,13 +382,13 @@ fn handle_chunk_tasks(
 // spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered
 // triggers the SpawnChunks event
 fn spawn_chunks_around_player(
-    trigger: Trigger<ChunkChanged>,
+    event: On<ChunkChanged>,
     mut commands: Commands,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = chunk_grid(&trigger.event().0);
+    let mut new_chunks = chunk_grid(&event.0);
 
     // get existing chunks
     let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
@@ -406,11 +406,11 @@ fn spawn_chunks_around_player(
 // despawns chunks that aren't in the chunk grid
 // runs when the ChunkChanged event triggers 
 fn despawn_chunks(
-    trigger: Trigger<ChunkChanged>,
+    event: On<ChunkChanged>,
     mut commands: Commands,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let chunk_grid = chunk_grid(&trigger.event().0);
+    let chunk_grid = chunk_grid(&event.0);
 
     // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
@@ -443,7 +443,7 @@ fn update_current_chunk(
 }
 
 fn regenerate_chunk(
-    trigger: Trigger<RegenerateChunk>,
+    event: On<RegenerateChunk>,
 
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -451,7 +451,7 @@ fn regenerate_chunk(
 
     chunk_query: Query<(&Chunk, &Transform)>,
 ) {
-    let entity = trigger.event().0;
+    let entity = event.0;
 
     // get chunk component and chunk transform through entity
     let (chunk, chunk_transform) = match chunk_query.get(entity) {

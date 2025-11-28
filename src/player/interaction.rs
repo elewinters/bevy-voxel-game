@@ -63,14 +63,13 @@ fn spawn_highlight_mesh(
 }
 
 fn highlight_voxel(
-    trigger: Trigger<Pointer<Move>>,
+    event: On<Pointer<Move>>,
 
     chunk_query: Query<Entity, (With<chunk::Chunk>, Without<HighlightMesh>)>,
     mut highlight_transform: Single<&mut Transform, (With<HighlightMesh>, Without<chunk::Chunk>)>,
 ) {
-    // get event
-    let event = trigger.event();
-    let entity = event.target;
+    // get entity of event
+    let entity = event.entity;
 
     // check if hit is a chunk
     if chunk_query.get(entity).is_err() {
@@ -89,14 +88,13 @@ fn highlight_voxel(
 
 // voxel breaking/placing
 fn manipulate_voxels(
-    trigger: Trigger<Pointer<Click>>,
+    event: On<Pointer<Click>>,
 
     mut commands: Commands,
     mut chunk_query: Query<(&mut chunk::Chunk, &Transform)>,
 ) {
-    // get event
-    let event = trigger.event();
-    let entity = event.target;
+    // get entity of event
+    let entity = event.entity;
     
     // the chunk that we hit and its transform
     let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
@@ -113,7 +111,7 @@ fn manipulate_voxels(
     // convert hit position to local chunk space
     let local_pos = pos - chunk_transform.translation;
 
-    match trigger.button {
+    match event.button {
         // voxel breaking
         PointerButton::Primary => {
             let pos = align_hit_pos_inward(local_pos, normal);

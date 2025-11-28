@@ -59,13 +59,13 @@ fn cursor_center(mut window: Single<&mut Window>) {
 }
 
 // locks the cursor (runs on startup)
-fn cursor_lock(mut window: Single<&mut Window>) {
-    window.cursor_options.grab_mode = CursorGrabMode::Locked;
-    window.cursor_options.visible = false;
+fn cursor_lock(mut cursor_options: Single<&mut CursorOptions>) {
+    cursor_options.grab_mode = CursorGrabMode::Locked;
+    cursor_options.visible = false;
 }
 
 // unlocks the cursor (ran by unlock_cursor_on_esc)
-fn cursor_unlock(mut window: Single<&mut Window>) {
-    window.cursor_options.grab_mode = CursorGrabMode::None;
-    window.cursor_options.visible = true;
+fn cursor_unlock(mut cursor_options: Single<&mut CursorOptions>) {
+    cursor_options.grab_mode = CursorGrabMode::None;
+    cursor_options.visible = true;
 }

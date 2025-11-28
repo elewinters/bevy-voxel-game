@@ -109,7 +109,7 @@ fn move_player(
 fn look_player(
     mut player_transform: Single<&mut Transform, (With<Player>, Without<Camera>)>,
     mut camera_transform: Single<&mut Transform, With<Camera>>,
-    mut mouse_events: EventReader<MouseMotion>,
+    mut mouse_events: MessageReader<MouseMotion>,
 
     mut look: Local<Vec2>,
     cursor_locked: Res<window::CursorLocked>

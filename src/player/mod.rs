@@ -1,7 +1,7 @@
 use bevy::prelude::*;
-use bevy::render::camera::Exposure;
+use bevy::camera::Exposure;
 
-use bevy::core_pipeline::experimental::taa::{TemporalAntiAliasPlugin, TemporalAntiAliasing};
+use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::pbr::{ScreenSpaceAmbientOcclusion};
 
 use crate::*;
@@ -13,8 +13,6 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_player);
-
-        app.add_plugins(TemporalAntiAliasPlugin);
 
         app.add_plugins(movement::MovementPlugin);
         app.add_plugins(interaction::InteractionPlugin);

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::asset::RenderAssetUsages;
-use bevy::render::mesh::{VertexAttributeValues, Indices};
+use bevy::mesh::{VertexAttributeValues, Indices};
 
 use bevy::prelude::*;
 

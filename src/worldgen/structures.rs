@@ -16,14 +16,14 @@ impl Plugin for StructuresPlugin {
 // #tag systems
 
 fn trees(
-    event: Trigger<OnAdd, Chunk>,
+    event: On<Add, Chunk>,
     query: Query<(&Chunk, &Transform)>,
 
     mut commands: Commands,
     assets: Res<AssetServer>
 ) {
     // get chunk
-    let chunk_entity = event.target();
+    let chunk_entity = event.entity;
     let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
     
     // get noise

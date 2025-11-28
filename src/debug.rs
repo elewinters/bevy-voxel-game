@@ -132,10 +132,10 @@ fn update_player_position(
 }
 
 fn update_current_chunk(
-    event: Trigger<chunk::ChunkChanged>,
+    event: On<chunk::ChunkChanged>,
     mut display: Single<&mut Text, With<CurrentChunkDisplay>>
 ) {
-    let pos = event.event().0.clone();
+    let pos = event.0.clone();
     **display = Text::new(format!("current chunk: [{}, {}]", pos.x, pos.z))
 }
 
