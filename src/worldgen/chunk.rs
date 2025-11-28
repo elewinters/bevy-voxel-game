@@ -22,8 +22,10 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
-        app.add_observer(spawn_chunk_tasks); // responds to thes SpawnChunks event
+        app.add_systems(Update, spawn_chunk_tasks); // responds to the SpawnChunk event
         app.add_systems(Update, handle_chunk_tasks);
+
+        app.add_message::<SpawnChunk>();
 
         // and all of these respond to ChunkChanged events
         app.add_observer(spawn_chunks_around_player);
@@ -105,7 +107,7 @@ pub struct ChunkTaskData {
 /* --------------- */
 // #tag events
 
-#[derive(Event)]
+#[derive(Message)]
 struct SpawnChunk(ChunkPosition);
 
 // the chunk that the player is currently standing on has changed
@@ -295,35 +297,37 @@ fn startup(
     ));
 }
 
-// reacts to the SpawnChunks event and spawns a Task that computes all the chunks with the given chunk positions
+// reacts to the SpawnChunk event and spawns a Task that computes the specified chunk with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
-    event: On<SpawnChunk>,
+    mut reader: MessageReader<SpawnChunk>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
-    let noise = Arc::clone(&noise.0);
-    let chunk_pos = Arc::new(event.0.clone());
-    
-    // spawn task that computes the specified chunks, returning their positions and meshes
-    let task = AsyncComputeTaskPool::get().spawn(async move {
-        let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos);
-        let mesh = chunk_mesh(&voxel_positions);
+    for SpawnChunk(chunk_pos) in reader.read() {
+        let noise = Arc::clone(&noise.0);
+        let chunk_pos = Arc::new(chunk_pos.clone());
+        
+        // spawn task that computes the specified chunks, returning their positions and meshes
+        let task = AsyncComputeTaskPool::get().spawn(async move {
+            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos);
+            let mesh = chunk_mesh(&voxel_positions);
 
-        ChunkTaskData {
-            transform: Transform::from_xyz(
-                chunk_pos.x as f32,
-                0.0,
-                chunk_pos.z as f32
-            ),
+            ChunkTaskData {
+                transform: Transform::from_xyz(
+                    chunk_pos.x as f32,
+                    0.0,
+                    chunk_pos.z as f32
+                ),
 
-            voxel_positions,
-            mesh
-        }
-    });
+                voxel_positions,
+                mesh
+            }
+        });
 
-    // push task to task queue
-    queue.0.push(task);
+        // push task to task queue
+        queue.0.push(task);
+    }
 }
 
 // we handle chunk tasks here, checking if a given task is finished and then spawning the chunk
@@ -357,10 +361,10 @@ fn handle_chunk_tasks(
 }
 
 // spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered
-// triggers the SpawnChunks event
+// triggers the SpawnChunk event
 fn spawn_chunks_around_player(
     event: On<ChunkChanged>,
-    mut commands: Commands,
+    mut writer: MessageWriter<SpawnChunk>,
 
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
@@ -378,7 +382,7 @@ fn spawn_chunks_around_player(
 
     // spawn chunks based on chunk positions hashset
     for chunk in new_chunks {
-        commands.trigger(SpawnChunk(chunk));
+        writer.write(SpawnChunk(chunk));
     }
 }
 
