@@ -67,8 +67,8 @@ fn spawn_debug_menu(mut commands: Commands) {
 
             align_items: AlignItems::Center,
 
-            top: Val::Px(25.0),
-            right: Val::Px(50.0),
+            top: px(25.0),
+            right: px(50.0),
             ..default()
         },
 
