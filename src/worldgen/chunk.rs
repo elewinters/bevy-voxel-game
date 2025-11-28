@@ -94,12 +94,10 @@ impl ChunkPosition {
     }
 }
 
-#[derive(Default)]
 pub struct ChunkTaskData {
-    voxel_positions: Vec<HashSet<IVec3>>,
-
-    transforms: Vec<Transform>,
-    meshes: Vec<Mesh>,
+    transform: Transform,
+    voxel_positions: HashSet<IVec3>,
+    mesh: Mesh,
 }
 
 /* --------------- */
@@ -108,7 +106,7 @@ pub struct ChunkTaskData {
 // #tag events
 
 #[derive(Event)]
-struct SpawnChunks(ChunkGrid);
+struct SpawnChunk(ChunkPosition);
 
 // the chunk that the player is currently standing on has changed
 // ChunkPosition represents the coordinates of the new chunk that we've stepped on
@@ -300,32 +298,28 @@ fn startup(
 // reacts to the SpawnChunks event and spawns a Task that computes all the chunks with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
-    event: On<SpawnChunks>,
+    event: On<SpawnChunk>,
     mut queue: ResMut<ChunkQueue>,
     noise: Res<Noise>,
 ) {
     let noise = Arc::clone(&noise.0);
-    let chunk_positions = Arc::new(event.0.clone());
+    let chunk_pos = Arc::new(event.0.clone());
     
     // spawn task that computes the specified chunks, returning their positions and meshes
     let task = AsyncComputeTaskPool::get().spawn(async move {
-        let mut data = ChunkTaskData::default();
+        let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos);
+        let mesh = chunk_mesh(&voxel_positions);
 
-        for chunk_pos in chunk_positions.iter() {
-            let voxel_positions = chunk_voxel_positions(&noise, chunk_pos);
-            let mesh = chunk_mesh(&voxel_positions);
-
-            data.voxel_positions.push(voxel_positions);
-            data.transforms.push(Transform::from_xyz(
+        ChunkTaskData {
+            transform: Transform::from_xyz(
                 chunk_pos.x as f32,
                 0.0,
                 chunk_pos.z as f32
-            ));
+            ),
 
-            data.meshes.push(mesh);
+            voxel_positions,
+            mesh
         }
-
-        data
     });
 
     // push task to task queue
@@ -343,21 +337,17 @@ fn handle_chunk_tasks(
     // remove tasks from the queue that have finished and have spawned successfully
     queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
         Some(chunk_data) => {
-            let len = chunk_data.voxel_positions.len();
+            commands.spawn(ChunkBundle(
+                Chunk {
+                    voxel_positions: chunk_data.voxel_positions.clone()
+                },
+                Name::new("chunk"),
 
-            for i in 0..len {
-                commands.spawn(ChunkBundle(
-                    Chunk {
-                        voxel_positions: chunk_data.voxel_positions[i].clone()
-                    },
-                    Name::new("chunk"),
+                chunk_data.transform,
 
-                    chunk_data.transforms[i],
-
-                    Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
-                    MeshMaterial3d(global_material.0.clone()),
-                ));
-            }
+                Mesh3d(meshes.add(chunk_data.mesh.clone())),
+                MeshMaterial3d(global_material.0.clone()),
+            ));
 
             // remove from the queue, as the task has finished 
             false
@@ -387,7 +377,9 @@ fn spawn_chunks_around_player(
     new_chunks.retain(|pos| !existing_chunks.contains(pos));
 
     // spawn chunks based on chunk positions hashset
-    commands.trigger(SpawnChunks(new_chunks));
+    for chunk in new_chunks {
+        commands.trigger(SpawnChunk(chunk));
+    }
 }
 
 // despawns chunks that aren't in the chunk grid
