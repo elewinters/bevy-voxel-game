@@ -352,10 +352,6 @@ fn handle_chunk_tasks(
     queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
         Some(chunk_data) => {
             let len = chunk_data.voxel_positions.len();
-            
-            // it is better to use spawn_batch here rather than individually spawning each entity
-            // however, because of a bug in the bevy engine this breaks the OnAdd hook for chunks, causing structure generation to crash [https://github.com/bevyengine/bevy/issues/19356]
-            // this has been fixed in bevy 0.17, so as soon as that releases this will use spawn_batch instead 
 
             for i in 0..len {
                 commands.spawn(ChunkBundle(
