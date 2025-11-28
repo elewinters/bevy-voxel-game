@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::collections::HashSet;
 
-use bevy::tasks::{block_on, futures_lite::future, AsyncComputeTaskPool, Task};
+use bevy::tasks::futures::check_ready;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
@@ -332,7 +333,7 @@ fn handle_chunk_tasks(
     global_material: Res<GlobalMaterial>,
 ) {
     // remove tasks from the queue that have finished and have spawned successfully
-    queue.0.retain_mut(|task| match block_on(future::poll_once(task)) {
+    queue.0.retain_mut(|task| match check_ready(task) {
         Some(chunk_data) => {
             commands.spawn(ChunkBundle(
                 Chunk {
