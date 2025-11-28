@@ -4,8 +4,6 @@ use bevy::camera::Exposure;
 use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::pbr::{ScreenSpaceAmbientOcclusion};
 
-use crate::*;
-
 mod movement;
 mod interaction;
 
@@ -25,10 +23,7 @@ impl Plugin for PlayerPlugin {
 // #tag components
 
 #[derive(Component)]
-pub struct Player {
-    fly: bool
-}
-
+pub struct Player;
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
@@ -36,26 +31,11 @@ pub struct Player {
 
 fn spawn_player(mut commands: Commands) {
     commands.spawn((
-        Player { 
-            fly: false 
-        },
+        Player,
         Name::new("player"),
 
         Transform::from_xyz(0.0, 20.0, 0.0),
         Visibility::default(),
-        Collider::round_cylinder(0.9, 0.3, 0.2),
-
-        KinematicCharacterController {
-            custom_mass: Some(5.0),
-            filter_flags: QueryFilterFlags::empty(),
-            
-            max_slope_climb_angle: 45.0_f32.to_radians(), // don't allow climbing slopes larger than 45 degrees
-            min_slope_slide_angle: 30.0_f32.to_radians(), // automatically slide down on slopes smaller than 30 degrees
-
-            snap_to_ground: None,
-
-            ..default()
-        },
 
         // camera
         children![(

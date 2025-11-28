@@ -10,7 +10,6 @@ bevy = { version = "0.17.3", features = [
 ] }
 
 bevy-inspector-egui = "0.35"
-bevy_rapier3d = { version = "0.32.0", features = ["simd-stable"] }
 fastnoise-lite = "1.1.1"
 
 [profile.dev]

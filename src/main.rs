@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
 
 mod player;
 mod worldgen;
@@ -27,7 +26,6 @@ fn main() {
     app.add_plugins((
         DefaultPlugins,
         MeshPickingPlugin,
-        RapierPhysicsPlugin::<NoUserData>::default(),
     ));
 
     // user plugins

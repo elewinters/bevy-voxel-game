@@ -6,7 +6,6 @@ use bevy::tasks::{block_on, futures_lite::future, AsyncComputeTaskPool, Task};
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
-use bevy_rapier3d::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
@@ -101,7 +100,6 @@ pub struct ChunkTaskData {
 
     transforms: Vec<Transform>,
     meshes: Vec<Mesh>,
-    colliders: Vec<Collider>,
 }
 
 /* --------------- */
@@ -156,7 +154,6 @@ struct ChunkBundle(
     Name,
 
     Transform,
-    Collider,
 
     Mesh3d,
     MeshMaterial3d<StandardMaterial>
@@ -240,7 +237,7 @@ fn chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Ha
     voxel_positions
 }
 
-fn chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
+fn chunk_mesh(voxel_positions: &HashSet<IVec3>) -> Mesh {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
@@ -258,11 +255,7 @@ fn chunk_mesh(voxel_positions: &HashSet<IVec3>) -> (Mesh, Collider) {
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
     }
 
-    // calculate collider
-    let collider = Collider::from_bevy_mesh(&chunk_mesh, &ComputedColliderShape::default()).expect("invalid mesh");
-
-    // return
-    (chunk_mesh, collider)
+    chunk_mesh
 }
 
 /* ---------------- */
@@ -314,13 +307,13 @@ fn spawn_chunk_tasks(
     let noise = Arc::clone(&noise.0);
     let chunk_positions = Arc::new(event.0.clone());
     
-    // spawn task that computes the specified chunks, returning their positions, meshes and colliders
+    // spawn task that computes the specified chunks, returning their positions and meshes
     let task = AsyncComputeTaskPool::get().spawn(async move {
         let mut data = ChunkTaskData::default();
 
         for chunk_pos in chunk_positions.iter() {
             let voxel_positions = chunk_voxel_positions(&noise, chunk_pos);
-            let (mesh, collider) = chunk_mesh(&voxel_positions);
+            let mesh = chunk_mesh(&voxel_positions);
 
             data.voxel_positions.push(voxel_positions);
             data.transforms.push(Transform::from_xyz(
@@ -330,7 +323,6 @@ fn spawn_chunk_tasks(
             ));
 
             data.meshes.push(mesh);
-            data.colliders.push(collider);
         }
 
         data
@@ -361,7 +353,6 @@ fn handle_chunk_tasks(
                     Name::new("chunk"),
 
                     chunk_data.transforms[i],
-                    chunk_data.colliders[i].clone(),
 
                     Mesh3d(meshes.add(chunk_data.meshes[i].clone())),
                     MeshMaterial3d(global_material.0.clone()),
@@ -458,8 +449,8 @@ fn regenerate_chunk(
     // despawn chunk
     commands.entity(entity).despawn();
 
-    // generate new mesh and collider based on new voxel_positions
-    let (mesh, collider) = chunk_mesh(&chunk.voxel_positions);
+    // generate new mesh based on new voxel_positions
+    let mesh = chunk_mesh(&chunk.voxel_positions);
 
     // spawn new chunk
     commands.spawn(ChunkBundle(
@@ -467,7 +458,6 @@ fn regenerate_chunk(
         Name::new("chunk"),
         
         *chunk_transform, // this performs a copy
-        collider,
 
         Mesh3d(meshes.add(mesh)),
         MeshMaterial3d(global_material.0.clone()),

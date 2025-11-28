@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseMotion;
-use bevy_rapier3d::control::KinematicCharacterController;
 
 use crate::player::*;
 use crate::window;
@@ -12,7 +11,6 @@ impl Plugin for MovementPlugin {
         app.add_systems(Update, (
             move_player,
             look_player,
-            fly_player
         ));
     }
 }
@@ -23,9 +21,8 @@ impl Plugin for MovementPlugin {
 // #tag constants
 
 const MOUSE_SENSITIVITY: f32 = 0.3;
-const MOVEMENT_SPEED: f32 = 8.0;
-const JUMP_POWER: f32 = 12.0;
-const GRAVITY: f32 = -9.81;
+const MOVEMENT_SPEED: f32 = 50.0;
+const ELEVATION_SPEED: f32 = 20.0;
 
 /* ---------------- */
 /*      systems     */
@@ -37,14 +34,8 @@ fn move_player(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     
-    player: Single<&Player>,
-    player_transform: Single<&Transform, With<Player>>,
-    mut controller: Single<&mut KinematicCharacterController, With<Player>>,
-    controller_output: Option<Single<&KinematicCharacterControllerOutput>>,
-
+    mut player_transform: Single<&mut Transform, With<Player>>,
     chunk_query: Query<&chunk::Chunk>,
-
-    mut gravity: Local<f32>,
 ) {
     // do not allow player to move if the chunks have not loaded yet
     if chunk_query.is_empty() {
@@ -66,43 +57,16 @@ fn move_player(
         input.x += MOVEMENT_SPEED;
     }
     if keyboard.pressed(KeyCode::Space) {
-        input.y += JUMP_POWER;
+        input.y += ELEVATION_SPEED;
     }
-    if keyboard.pressed(KeyCode::ShiftLeft) && player.fly {
-        input.y -= JUMP_POWER;
-    }
-
-    // gravity stuff
-    // do not apply gravity if we are flying
-    if !player.fly {
-        if let Some(x) = controller_output && x.grounded {
-            *gravity = 0.0;
-
-            // if we're jumping
-            if input.y > 0.0 {
-                *gravity = input.y;
-            }
-        }
-
-        input.y = *gravity;
-        *gravity += GRAVITY * time.delta_secs() * controller.custom_mass.expect("character controller must have a custom mass");
-    }
-    
-    // make the player faster when flying
-    if player.fly {
-        controller.filter_flags = QueryFilterFlags::all();
-
-        input.x *= 4.0;
-        input.y *= 2.0;
-        input.z *= 4.0;
-    }
-    else {
-        controller.filter_flags = QueryFilterFlags::empty();
+    if keyboard.pressed(KeyCode::ShiftLeft) {
+        input.y -= ELEVATION_SPEED;
     }
 
     // this is where we actually move the player
     // we use the player's rotation so that we move in the direction that we're facing
-    controller.translation = Some(player_transform.rotation * (input * time.delta_secs()));
+    let rotation = player_transform.rotation;
+    player_transform.translation += rotation * (input * time.delta_secs());
 }
 
 // responsible for changing the player/camera's rotation based on mouse input, aka "looking"
@@ -126,14 +90,4 @@ fn look_player(
 
     player_transform.rotation = Quat::from_axis_angle(Vec3::Y, look.x.to_radians());
     camera_transform.rotation = Quat::from_axis_angle(Vec3::X, look.y.to_radians());
-}
-
-// enable flying on pressing F
-fn fly_player(
-    mut player: Single<&mut Player>,
-    keys: Res<ButtonInput<KeyCode>>,
-) {
-    if keys.just_pressed(KeyCode::KeyF) {
-        player.fly = !player.fly;
-    }
 }

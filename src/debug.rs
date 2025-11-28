@@ -20,8 +20,6 @@ impl Plugin for DebugPlugin {
         ));
 
         app.add_observer(update_current_chunk);
-
-        //app.add_plugins(RapierDebugRenderPlugin::default());
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
 
         app.add_plugins((
