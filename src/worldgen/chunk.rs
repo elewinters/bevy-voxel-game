@@ -28,6 +28,8 @@ impl Plugin for ChunkPlugin {
 
         // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
+
+        app.init_resource::<ExistingChunks>();
     }
 }
 /* 
@@ -44,7 +46,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk gen constants
-const RENDER_DISTANCE: i32 = 8;
+const RENDER_DISTANCE: i32 = 16;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -112,6 +114,9 @@ struct ChunkChannel {
     sender: Sender<ChunkTaskData>,
     receiver: Receiver<ChunkTaskData>,
 }
+
+#[derive(Resource, Default)]
+struct ExistingChunks(HashSet<ChunkPosition>);
 
 /* ------------------- */
 /*      components     */
@@ -289,45 +294,44 @@ fn startup(
 fn spawn_chunk_tasks(
     channel: Res<ChunkChannel>,
     noise: Res<Noise>,
+    mut existing_chunks: ResMut<ExistingChunks>,
 
     player_transform: Single<&Transform, With<player::Player>>,
-    chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = chunk_grid(&current_chunk(player_transform.translation));
-
-    // get existing chunks
-    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
-    for transform in chunk_query {
-        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
-    }
-
-    // only keep the positions that dont exist, so that we dont spawn new chunks in a place where a chunk already exists
-    new_chunks.retain(|pos| !existing_chunks.contains(pos));
+    let chunk_grid = chunk_grid(&current_chunk(player_transform.translation));
 
     // spawn new chunks
-    for chunk_pos in new_chunks {
+    for chunk_pos in chunk_grid {
+        if existing_chunks.0.contains(&chunk_pos) {
+            continue;
+        }
+
         let noise = Arc::clone(&noise.0);
-        let chunk_pos = Arc::new(chunk_pos.clone());
+        let chunk_pos_arc = Arc::new(chunk_pos.clone());
         let sender = channel.sender.clone();
         
         // spawn task that computes the specified chunks, returning their positions and meshes
         AsyncComputeTaskPool::get().spawn(async move {
-            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos);
+            let transform = Transform::from_xyz(
+                chunk_pos_arc.x as f32,
+                0.0,
+                chunk_pos_arc.z as f32
+            );
+
+            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos_arc);
             let mesh = chunk_mesh(&voxel_positions);
 
             let _ = sender.send(ChunkTaskData {
-                transform: Transform::from_xyz(
-                    chunk_pos.x as f32,
-                    0.0,
-                    chunk_pos.z as f32
-                ),
+                transform,
 
                 voxel_positions,
                 mesh
             });
         })
         .detach();
+
+        existing_chunks.0.insert(chunk_pos);
     }
 }
 
@@ -358,6 +362,7 @@ fn handle_chunk_tasks(
 // runs when the ChunkChanged event triggers 
 fn despawn_chunks(
     mut commands: Commands,
+    mut existing_chunks: ResMut<ExistingChunks>,
     
     player_transform: Single<&Transform, With<player::Player>>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
@@ -366,9 +371,12 @@ fn despawn_chunks(
 
     // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
+        let chunk_pos = ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32);
+
         // check chunk grid, if this chunk isn't in the grid, despawn it
-        if !chunk_grid.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
+        if !chunk_grid.contains(&chunk_pos) {
             commands.entity(entity).despawn();
+            existing_chunks.0.remove(&chunk_pos);
         }
     }
 }
