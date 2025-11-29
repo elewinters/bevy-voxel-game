@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::collections::HashSet;
 
-use bevy::tasks::futures::check_ready;
-use bevy::tasks::{AsyncComputeTaskPool, Task};
+use bevy::tasks::AsyncComputeTaskPool;
+use crossbeam_channel::{Sender, Receiver};
 
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
@@ -34,8 +34,6 @@ impl Plugin for ChunkPlugin {
 
         // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
-
-        app.init_resource::<ChunkQueue>();
     }
 }
 /* 
@@ -123,8 +121,11 @@ struct GlobalMaterial(Handle<StandardMaterial>);
 #[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
 
-#[derive(Resource, Default)]
-pub struct ChunkQueue(pub Vec<Task<ChunkTaskData>>);
+#[derive(Resource)]
+struct ChunkChannel {
+    sender: Sender<ChunkTaskData>,
+    receiver: Receiver<ChunkTaskData>,
+}
 
 /* ------------------- */
 /*      components     */
@@ -273,6 +274,10 @@ fn startup(
     let global_material = materials.add(Color::from(LAWN_GREEN));
     commands.insert_resource(GlobalMaterial(global_material));
 
+    // setup chunk channel resource
+    let (sender, receiver) = crossbeam_channel::unbounded();
+    commands.insert_resource(ChunkChannel {sender, receiver});
+
     // triggers the ChunkChanged event so that we actually spawn somewhere
     commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
 
@@ -295,19 +300,20 @@ fn startup(
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
     mut reader: MessageReader<SpawnChunk>,
-    mut queue: ResMut<ChunkQueue>,
+    channel: Res<ChunkChannel>,
     noise: Res<Noise>,
 ) {
     for SpawnChunk(chunk_pos) in reader.read() {
         let noise = Arc::clone(&noise.0);
         let chunk_pos = Arc::new(chunk_pos.clone());
+        let sender = channel.sender.clone();
         
         // spawn task that computes the specified chunks, returning their positions and meshes
-        let task = AsyncComputeTaskPool::get().spawn(async move {
+        AsyncComputeTaskPool::get().spawn(async move {
             let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos);
             let mesh = chunk_mesh(&voxel_positions);
 
-            ChunkTaskData {
+            let _ = sender.send(ChunkTaskData {
                 transform: Transform::from_xyz(
                     chunk_pos.x as f32,
                     0.0,
@@ -316,42 +322,33 @@ fn spawn_chunk_tasks(
 
                 voxel_positions,
                 mesh
-            }
-        });
-
-        // push task to task queue
-        queue.0.push(task);
+            });
+        })
+        .detach();
     }
 }
 
 // we handle chunk tasks here, checking if a given task is finished and then spawning the chunk
 fn handle_chunk_tasks(
     mut commands: Commands,
-    mut queue: ResMut<ChunkQueue>,
+    channel: Res<ChunkChannel>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     global_material: Res<GlobalMaterial>,
 ) {
-    // remove tasks from the queue that have finished and have spawned successfully
-    queue.0.retain_mut(|task| match check_ready(task) {
-        Some(chunk_data) => {
-            commands.spawn(ChunkBundle(
-                Chunk {
-                    voxel_positions: chunk_data.voxel_positions.clone()
-                },
-                Name::new("chunk"),
+    for chunk_data in channel.receiver.try_iter() {
+        commands.spawn(ChunkBundle(
+            Chunk {
+                voxel_positions: chunk_data.voxel_positions
+            },
+            Name::new("chunk"),
 
-                chunk_data.transform,
+            chunk_data.transform,
 
-                Mesh3d(meshes.add(chunk_data.mesh.clone())),
-                MeshMaterial3d(global_material.0.clone()),
-            ));
-
-            // remove from the queue, as the task has finished 
-            false
-        }
-        None => true, // keep it in the queue, as the task is still processing
-    });
+            Mesh3d(meshes.add(chunk_data.mesh)),
+            MeshMaterial3d(global_material.0.clone()),
+        ));
+    }
 }
 
 // spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered

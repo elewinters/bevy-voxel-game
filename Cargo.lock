@@ -399,6 +399,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "crossbeam-channel",
  "fastnoise-lite",
 ]
 
