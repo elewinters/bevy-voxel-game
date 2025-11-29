@@ -48,8 +48,8 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk gen constants
-const RENDER_DISTANCE: i32 = 16;
-const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
+const RENDER_DISTANCE: i32 = 16; // try and make sure that this number is even (cleanly divisible by 2)
+const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize) * (RENDER_DISTANCE as usize);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
@@ -188,8 +188,8 @@ fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
         align_pos_to_chunk(player_pos.z)
     );
 
-    for x in -render_half..=render_half {
-        for z in -render_half..=render_half {
+    for x in -render_half..render_half {
+        for z in -render_half..render_half {
             let chunk_x: i32 = current_chunk.x + (x * CHUNK_SIZE_HORIZONTAL);
             let chunk_z: i32 = current_chunk.z + (z * CHUNK_SIZE_HORIZONTAL);
 
