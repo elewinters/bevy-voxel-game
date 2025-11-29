@@ -150,12 +150,6 @@ struct ChunkBundle(
 /* ------------------ */
 // #tag functions
 
-// round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
-fn align_pos_to_chunk(x: f32) -> i32 {
-    let chunk_size = CHUNK_SIZE_HORIZONTAL as f32;
-    ((x / chunk_size).floor() * chunk_size) as i32
-}
-
 fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     let plains = perlin_noise.get_noise_2d(x, z);
     let hills = perlin_noise.get_noise_2d(x / HILLS_WAVELENGTH, z / HILLS_WAVELENGTH) * HILLS_HEIGHT_VARIATION;
@@ -171,6 +165,12 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     };
 
     (plains + hills).floor()
+}
+
+// round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
+fn align_pos_to_chunk(x: f32) -> i32 {
+    let chunk_size = CHUNK_SIZE_HORIZONTAL as f32;
+    ((x / chunk_size).floor() * chunk_size) as i32
 }
 
 /*
