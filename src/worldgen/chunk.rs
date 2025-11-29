@@ -307,19 +307,19 @@ fn spawn_chunk_tasks(
             continue;
         }
 
-        let noise = Arc::clone(&noise.0);
-        let chunk_pos_arc = Arc::new(chunk_pos.clone());
+        let noise = noise.0.clone();
+        let chunk_pos_clone = chunk_pos.clone();
         let sender = channel.sender.clone();
         
         // spawn task that computes the specified chunks, returning their positions and meshes
         AsyncComputeTaskPool::get().spawn(async move {
             let transform = Transform::from_xyz(
-                chunk_pos_arc.x as f32,
+                chunk_pos_clone.x as f32,
                 0.0,
-                chunk_pos_arc.z as f32
+                chunk_pos_clone.z as f32
             );
 
-            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos_arc);
+            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos_clone);
             let mesh = chunk_mesh(&voxel_positions);
 
             let _ = sender.send(ChunkTaskData {
