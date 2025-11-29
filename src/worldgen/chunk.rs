@@ -111,6 +111,7 @@ struct GlobalMaterial(Handle<StandardMaterial>);
 #[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
 
+// this is a list of all of the chunks that currently exist or will exist in the future (the thread computing them hasn't finished yet but will later)
 #[derive(Resource, Default)]
 struct ExistingChunks(HashSet<ChunkPosition>);
 
@@ -305,7 +306,7 @@ fn send_chunk_messages(
 
     // spawn new chunks
     for chunk_pos in chunk_grid {
-        // check if chunk already exists
+        // skip this chunk if it already exists/is being processed
         if existing_chunks.0.contains(&chunk_pos) {
             continue;
         }
