@@ -173,18 +173,19 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     (plains + hills).floor()
 }
 
-// gets the current chunk position the player is standing on
-fn current_chunk(player_pos: Vec3) -> ChunkPosition {
-    ChunkPosition::new(align_pos_to_chunk(player_pos.x), align_pos_to_chunk(player_pos.z))
-}
-
 /*
     this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
     we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
 */
-fn chunk_grid(current_chunk: &ChunkPosition) -> HashSet<ChunkPosition> {
+fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
     let mut new_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
+
+    // get the current chunk the player is standing on
+    let current_chunk = ChunkPosition::new(
+        align_pos_to_chunk(player_pos.x), 
+        align_pos_to_chunk(player_pos.z)
+    );
 
     for x in -render_half..=render_half {
         for z in -render_half..=render_half {
@@ -299,7 +300,7 @@ fn spawn_chunk_tasks(
     player_transform: Single<&Transform, With<player::Player>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let chunk_grid = chunk_grid(&current_chunk(player_transform.translation));
+    let chunk_grid = chunk_grid(player_transform.translation);
 
     // spawn new chunks
     for chunk_pos in chunk_grid {
@@ -367,7 +368,7 @@ fn despawn_chunks(
     player_transform: Single<&Transform, With<player::Player>>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let chunk_grid = chunk_grid(&current_chunk(player_transform.translation));
+    let chunk_grid = chunk_grid(player_transform.translation);
 
     // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
