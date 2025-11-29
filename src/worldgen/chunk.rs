@@ -22,13 +22,9 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
-        app.add_systems(Update, spawn_chunk_tasks); // responds to the SpawnChunk event
+        app.add_systems(Update, spawn_chunk_tasks);
         app.add_systems(Update, handle_chunk_tasks);
-
-        app.add_message::<SpawnChunk>();
-
-        // and all of these respond to ChunkChanged events
-        app.add_systems(Update, (spawn_chunks_around_player, despawn_chunks));
+        app.add_systems(Update, despawn_chunks);
 
         // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
@@ -96,9 +92,6 @@ pub struct ChunkTaskData {
 /*      events     */
 /* --------------- */
 // #tag events
-
-#[derive(Message)]
-struct SpawnChunk(ChunkPosition);
 
 #[derive(Event)]
 pub struct RegenerateChunk(pub Entity);
@@ -294,11 +287,26 @@ fn startup(
 // reacts to the SpawnChunk event and spawns a Task that computes the specified chunk with the given chunk positions
 // we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
 fn spawn_chunk_tasks(
-    mut reader: MessageReader<SpawnChunk>,
     channel: Res<ChunkChannel>,
     noise: Res<Noise>,
+
+    player_transform: Single<&Transform, With<player::Player>>,
+    chunk_query: Query<&Transform, With<Chunk>>,
 ) {
-    for SpawnChunk(chunk_pos) in reader.read() {
+    /* generate a grid of chunk positions around the player  */
+    let mut new_chunks = chunk_grid(&current_chunk(player_transform.translation));
+
+    // get existing chunks
+    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
+    for transform in chunk_query {
+        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
+    }
+
+    // only keep the positions that dont exist, so that we dont spawn new chunks in a place where a chunk already exists
+    new_chunks.retain(|pos| !existing_chunks.contains(pos));
+
+    // spawn new chunks
+    for chunk_pos in new_chunks {
         let noise = Arc::clone(&noise.0);
         let chunk_pos = Arc::new(chunk_pos.clone());
         let sender = channel.sender.clone();
@@ -343,32 +351,6 @@ fn handle_chunk_tasks(
             Mesh3d(meshes.add(chunk_data.mesh)),
             MeshMaterial3d(global_material.0.clone()),
         ));
-    }
-}
-
-// spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered
-// triggers the SpawnChunk event
-fn spawn_chunks_around_player(
-    mut writer: MessageWriter<SpawnChunk>,
-
-    player_transform: Single<&Transform, With<player::Player>>,
-    chunk_query: Query<&Transform, With<Chunk>>,
-) {
-    /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = chunk_grid(&current_chunk(player_transform.translation));
-
-    // get existing chunks
-    let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
-    for transform in chunk_query {
-        existing_chunks.insert(ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32));
-    }
-
-    // only keep the positions that dont exist, so that we dont spawn new chunks in a place where a chunk already exists
-    new_chunks.retain(|pos| !existing_chunks.contains(pos));
-
-    // spawn chunks based on chunk positions hashset
-    for chunk in new_chunks {
-        writer.write(SpawnChunk(chunk));
     }
 }
 
