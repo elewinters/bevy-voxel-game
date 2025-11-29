@@ -19,16 +19,18 @@ impl Plugin for ChunkPlugin {
         // add structures plugin
         app.add_plugins(structures::StructuresPlugin);
         
+        // startup plugin
         app.add_systems(Startup, startup);
 
-        // spawns/handles tasks responsible for generating chunks 
-        app.add_systems(Update, spawn_chunk_tasks);
-        app.add_systems(Update, handle_chunk_tasks);
+        // systems responsible for spawning/despawning chunks 
+        app.add_systems(Update, send_chunk_messages);
+        app.add_systems(Update, handle_chunk_messages);
         app.add_systems(Update, despawn_chunks);
 
         // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
 
+        // resources
         app.init_resource::<ExistingChunks>();
     }
 }
@@ -84,7 +86,7 @@ impl ChunkPosition {
     }
 }
 
-pub struct ChunkTaskData {
+pub struct ChunkMessage {
     transform: Transform,
     voxel_positions: HashSet<IVec3>,
     mesh: Mesh,
@@ -109,14 +111,14 @@ struct GlobalMaterial(Handle<StandardMaterial>);
 #[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
 
-#[derive(Resource)]
-struct ChunkChannel {
-    sender: Sender<ChunkTaskData>,
-    receiver: Receiver<ChunkTaskData>,
-}
-
 #[derive(Resource, Default)]
 struct ExistingChunks(HashSet<ChunkPosition>);
+
+#[derive(Resource)]
+struct ChunkChannel {
+    sender: Sender<ChunkMessage>,
+    receiver: Receiver<ChunkMessage>,
+}
 
 /* ------------------- */
 /*      components     */
@@ -173,10 +175,9 @@ fn align_pos_to_chunk(x: f32) -> i32 {
     ((x / chunk_size).floor() * chunk_size) as i32
 }
 
-/*
-    this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
-    we spawn new chunks based on this grid in spawn_chunks, if a chunk doesnt already exist in that position that is
-*/
+
+// this calculates a grid of chunk positions around the player based on RENDER_DISTANCE
+// we spawn and despawn chunks based on this grid
 fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
     let mut new_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
     let render_half = RENDER_DISTANCE / 2;
@@ -275,7 +276,7 @@ fn startup(
     let (sender, receiver) = crossbeam_channel::unbounded();
     commands.insert_resource(ChunkChannel {sender, receiver});
 
-    // purple test entity
+    // test tree
     commands.spawn((
         Name::new("test entity"),
 
@@ -290,9 +291,9 @@ fn startup(
     ));
 }
 
-// reacts to the SpawnChunk event and spawns a Task that computes the specified chunk with the given chunk positions
-// we allow this Task to run over several frames, when that task is complete we handle it in handle_chunk_tasks, which actually spawns the chunk
-fn spawn_chunk_tasks(
+// runs every frame and spawns new chunks around the player if they don't already exist
+// we compute these chunks over multiple frames on separate threads, and once it's done computing we send a message over to handle_chunk_messages which spawns it
+fn send_chunk_messages(
     channel: Res<ChunkChannel>,
     noise: Res<Noise>,
     mut existing_chunks: ResMut<ExistingChunks>,
@@ -304,15 +305,17 @@ fn spawn_chunk_tasks(
 
     // spawn new chunks
     for chunk_pos in chunk_grid {
+        // check if chunk already exists
         if existing_chunks.0.contains(&chunk_pos) {
             continue;
         }
 
+        // data that'll be moved into the thread
         let noise = noise.0.clone();
         let chunk_pos_clone = chunk_pos.clone();
         let sender = channel.sender.clone();
         
-        // spawn task that computes the specified chunks, returning their positions and meshes
+        // spawns a thread that computes the specified chunk, sending it's result over the ChunkChannel once it's complete
         AsyncComputeTaskPool::get().spawn(async move {
             let transform = Transform::from_xyz(
                 chunk_pos_clone.x as f32,
@@ -323,7 +326,8 @@ fn spawn_chunk_tasks(
             let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos_clone);
             let mesh = chunk_mesh(&voxel_positions);
 
-            let _ = sender.send(ChunkTaskData {
+            // we're done computing, send a message over the chunk channel
+            let _ = sender.send(ChunkMessage {
                 transform,
 
                 voxel_positions,
@@ -332,12 +336,13 @@ fn spawn_chunk_tasks(
         })
         .detach();
 
+        // we have started the computation thread and the chunk will spawn in the future, let's make sure this chunk doesn't accidentally get computed again in the next pass 
         existing_chunks.0.insert(chunk_pos);
     }
 }
 
-// we handle chunk tasks here, checking if a given task is finished and then spawning the chunk
-fn handle_chunk_tasks(
+// we handle chunk messages here, spawning any chunks that we receive over the ChunkChannel
+fn handle_chunk_messages(
     mut commands: Commands,
     channel: Res<ChunkChannel>,
 
@@ -359,8 +364,8 @@ fn handle_chunk_tasks(
     }
 }
 
-// despawns chunks that aren't in the chunk grid
-// runs when the ChunkChanged event triggers 
+// runs every frame and despawns chunks that aren't in the chunk grid
+// also removes the despawned chunk from the ExistingChunks resource
 fn despawn_chunks(
     mut commands: Commands,
     mut existing_chunks: ResMut<ExistingChunks>,
@@ -377,11 +382,16 @@ fn despawn_chunks(
         // check chunk grid, if this chunk isn't in the grid, despawn it
         if !chunk_grid.contains(&chunk_pos) {
             commands.entity(entity).despawn();
+
+            // can't forget to remove it from the existing chunks list!!
             existing_chunks.0.remove(&chunk_pos);
         }
     }
 }
 
+// responds to the RegenerateChunk event
+// despawns a chunk and creates a new one at the same position with the specified voxel data
+// used for block breaking/chunk manipulation in general by other parts of the code
 fn regenerate_chunk(
     event: On<RegenerateChunk>,
 
