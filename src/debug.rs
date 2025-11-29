@@ -5,7 +5,6 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 use bevy::prelude::*;
 use crate::player;
-use crate::worldgen::chunk;
 
 pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
@@ -18,7 +17,6 @@ impl Plugin for DebugPlugin {
             update_player_position,
         ));
 
-        app.add_observer(update_current_chunk);
         app.add_plugins(FrameTimeDiagnosticsPlugin::default());
 
         app.add_plugins((
@@ -118,12 +116,4 @@ fn update_player_position(
     mut display: Single<&mut Text, With<PlayerPositionDisplay>>
 ) {
     **display = Text::new(format!("player position: {}", player_position.translation.trunc()))
-}
-
-fn update_current_chunk(
-    event: On<chunk::ChunkChanged>,
-    mut display: Single<&mut Text, With<CurrentChunkDisplay>>
-) {
-    let pos = event.0.clone();
-    **display = Text::new(format!("current chunk: [{}, {}]", pos.x, pos.z))
 }

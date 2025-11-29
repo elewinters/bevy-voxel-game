@@ -19,7 +19,6 @@ impl Plugin for ChunkPlugin {
         // add structures plugin
         app.add_plugins(structures::StructuresPlugin);
         
-        app.add_systems(Update, update_current_chunk);
         app.add_systems(Startup, startup);
 
         // spawns/handles tasks responsible for generating chunks 
@@ -29,8 +28,7 @@ impl Plugin for ChunkPlugin {
         app.add_message::<SpawnChunk>();
 
         // and all of these respond to ChunkChanged events
-        app.add_observer(spawn_chunks_around_player);
-        app.add_observer(despawn_chunks);
+        app.add_systems(Update, (spawn_chunks_around_player, despawn_chunks));
 
         // responds to RegenerateChunk event
         app.add_observer(regenerate_chunk);
@@ -50,7 +48,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk gen constants
-const RENDER_DISTANCE: i32 = 16;
+const RENDER_DISTANCE: i32 = 8;
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize + 1) * (RENDER_DISTANCE as usize + 1);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
@@ -101,11 +99,6 @@ pub struct ChunkTaskData {
 
 #[derive(Message)]
 struct SpawnChunk(ChunkPosition);
-
-// the chunk that the player is currently standing on has changed
-// ChunkPosition represents the coordinates of the new chunk that we've stepped on
-#[derive(Event)]
-pub struct ChunkChanged(pub ChunkPosition);
 
 #[derive(Event)]
 pub struct RegenerateChunk(pub Entity);
@@ -180,6 +173,11 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     };
 
     (plains + hills).floor()
+}
+
+// gets the current chunk position the player is standing on
+fn current_chunk(player_pos: Vec3) -> ChunkPosition {
+    ChunkPosition::new(align_pos_to_chunk(player_pos.x), align_pos_to_chunk(player_pos.z))
 }
 
 /*
@@ -278,9 +276,6 @@ fn startup(
     let (sender, receiver) = crossbeam_channel::unbounded();
     commands.insert_resource(ChunkChannel {sender, receiver});
 
-    // triggers the ChunkChanged event so that we actually spawn somewhere
-    commands.trigger(ChunkChanged(ChunkPosition::new(0, 0)));
-
     // purple test entity
     commands.spawn((
         Name::new("test entity"),
@@ -354,13 +349,13 @@ fn handle_chunk_tasks(
 // spawns new chunks based on the player's position, runs when the ChunkChanged event is triggered
 // triggers the SpawnChunk event
 fn spawn_chunks_around_player(
-    event: On<ChunkChanged>,
     mut writer: MessageWriter<SpawnChunk>,
 
+    player_transform: Single<&Transform, With<player::Player>>,
     chunk_query: Query<&Transform, With<Chunk>>,
 ) {
     /* generate a grid of chunk positions around the player  */
-    let mut new_chunks = chunk_grid(&event.0);
+    let mut new_chunks = chunk_grid(&current_chunk(player_transform.translation));
 
     // get existing chunks
     let mut existing_chunks = HashSet::with_capacity(CHUNK_GRID_LEN);
@@ -380,11 +375,12 @@ fn spawn_chunks_around_player(
 // despawns chunks that aren't in the chunk grid
 // runs when the ChunkChanged event triggers 
 fn despawn_chunks(
-    event: On<ChunkChanged>,
     mut commands: Commands,
+    
+    player_transform: Single<&Transform, With<player::Player>>,
     chunk_query: Query<(Entity, &Transform), With<Chunk>>,
 ) {
-    let chunk_grid = chunk_grid(&event.0);
+    let chunk_grid = chunk_grid(&current_chunk(player_transform.translation));
 
     // iterate over all exisiting chunks
     for (entity, transform) in chunk_query {
@@ -392,27 +388,6 @@ fn despawn_chunks(
         if !chunk_grid.contains(&ChunkPosition::new(transform.translation.x as i32, transform.translation.z as i32)) {
             commands.entity(entity).despawn();
         }
-    }
-}
-
-fn update_current_chunk(
-    mut commands: Commands,
-    player_transform: Single<&Transform, With<player::Player>>,
-
-    mut prev_chunk: Local<ChunkPosition>
-) {
-    let player_pos = player_transform.translation;
-    
-    // snap player position to chunk coordinates
-    let chunk_x = align_pos_to_chunk(player_pos.x);
-    let chunk_z = align_pos_to_chunk(player_pos.z);
-
-    // only update current_chunk if changed
-    if prev_chunk.x != chunk_x || prev_chunk.z != chunk_z {
-        prev_chunk.x = chunk_x;
-        prev_chunk.z = chunk_z;
-
-        commands.trigger(ChunkChanged(ChunkPosition::new(chunk_x, chunk_z)));
     }
 }
 
