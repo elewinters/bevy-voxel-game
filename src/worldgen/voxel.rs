@@ -152,17 +152,13 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
 
 // uses an IVec so that it can be hashed properly
 pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
-    if let VoxelFace::Bottom = face {
-        return false;
-    }
-    
     let neighbor_pos = match face {
         VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
         VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
         VoxelFace::Right => voxel_pos + IVec3::new(1, 0, 0),
         VoxelFace::Left => voxel_pos + IVec3::new(-1, 0, 0),
         VoxelFace::Top => voxel_pos + IVec3::new(0, 1, 0),
-        VoxelFace::Bottom => voxel_pos + IVec3::new(0, -1, 0),
+        VoxelFace::Bottom => return false,
     };
     
     !voxel_positions.contains(&neighbor_pos)
