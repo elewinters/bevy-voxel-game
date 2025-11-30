@@ -32,7 +32,7 @@ fn spawn_atmosphere(mut commands: Commands) {
     commands.spawn((
         Name::new("sun"),
         DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT,
+            illuminance: light_consts::lux::FULL_DAYLIGHT * 2.0,
             shadows_enabled: true,
             ..default()
         },
