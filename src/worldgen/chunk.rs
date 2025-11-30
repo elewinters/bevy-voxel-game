@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{Sender, Receiver};
 
-use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 use fastnoise_lite::*;
@@ -270,26 +269,16 @@ fn startup(
     commands.insert_resource(Noise(Arc::new(noise)));
 
     // setup global material resource
-    let global_material = materials.add(Color::from(LAWN_GREEN));
+    let global_material = materials.add(StandardMaterial {
+        base_color_texture: Some(asset_server.load("grass.png")),
+        perceptual_roughness: 1.0,
+        ..default()
+    });
     commands.insert_resource(GlobalMaterial(global_material));
 
     // setup chunk channel resource
     let (sender, receiver) = crossbeam_channel::unbounded();
     commands.insert_resource(ChunkChannel {sender, receiver});
-
-    // test tree
-    commands.spawn((
-        Name::new("test entity"),
-
-        Transform {
-            translation: Vec3::new(3.0, -0.5, 3.0),
-            scale: Vec3::new(8.0, 8.0, 8.0),
-            ..default()
-        },
-        SceneRoot(
-            asset_server.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
-        ),
-    ));
 }
 
 // runs every frame and spawns new chunks around the player if they don't already exist
