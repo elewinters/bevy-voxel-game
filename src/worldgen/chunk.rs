@@ -279,6 +279,20 @@ fn startup(
     // setup chunk channel resource
     let (sender, receiver) = crossbeam_channel::unbounded();
     commands.insert_resource(ChunkChannel {sender, receiver});
+
+    // test model
+    commands.spawn((
+        Name::new("bush"),
+        Transform {
+            translation: Vec3::new(53.0, -3.0, 28.0),
+            scale: Vec3::new(2.0, 2.0, 2.0),
+            ..default()
+        },
+
+        SceneRoot(
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("bush.glb")),
+        ),
+    ));
 }
 
 // runs every frame and spawns new chunks around the player if they don't already exist
