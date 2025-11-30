@@ -45,13 +45,13 @@ fn trees(
         commands.get_entity(chunk_entity).unwrap().with_child((
             Name::new("tree"),
             Transform {
-                translation: Vec3::new(local_pos.x as f32, local_pos.y as f32 + 0.5, local_pos.z as f32),
-                scale: Vec3::new(8.0, 8.0, 8.0),
+                translation: Vec3::new(local_pos.x as f32, local_pos.y as f32, local_pos.z as f32),
+                scale: Vec3::new(0.5, 0.5, 0.5),
                 ..default()
             },
 
             SceneRoot(
-                assets.load(GltfAssetLabel::Scene(0).from_asset("tree.glb")),
+                assets.load(GltfAssetLabel::Scene(0).from_asset("tree_textured.glb")),
             ),
         ));
     }
