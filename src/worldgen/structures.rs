@@ -6,17 +6,48 @@ use super::chunk::Chunk;
 pub struct StructuresPlugin;
 impl Plugin for StructuresPlugin {
     fn build(&self, app: &mut App) {
-        app.add_observer(trees);
-        app.add_observer(bushes);
+        app.add_observer(structures);
     }
 }
+
+struct Structure {
+    model: &'static str,
+
+    noise_seed: i32,
+    threshold: f32,
+    translation_offset: Vec3,
+    scale: Vec3
+}
+
+const STRUCTURE_DEFINITIONS: [Structure; 2] = [
+    // trees
+    Structure {
+        model: "tree_textured.glb",
+
+        noise_seed: 1,
+        threshold: 0.75,
+
+        translation_offset: Vec3::ZERO,
+        scale: Vec3::new(0.5, 0.5, 0.5),
+    },
+    // bushes
+    Structure {
+        model: "bush.glb",
+
+        noise_seed: 2,
+        threshold: 0.75,
+
+        translation_offset: Vec3::new(0.0, 1.25, 0.0),
+        scale: Vec3::new(3.0, 3.0, 3.0)
+    }
+];
 
 /* ---------------- */
 /*      systems     */
 /* ---------------- */
 // #tag systems
 
-fn trees(
+fn structures(
     event: On<Add, Chunk>,
     query: Query<(&Chunk, &Transform)>,
 
@@ -26,76 +57,36 @@ fn trees(
     // get chunk
     let chunk_entity = event.entity;
     let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
-    
-    // get noise
-    let mut noise = FastNoiseLite::with_seed(512);
-    noise.set_frequency(Some(0.5));
-    noise.set_noise_type(Some(NoiseType::Perlin));
 
-    for local_pos in &chunk.voxel_positions {
-        // position of the voxel in global world space
-        let global_pos = local_pos.as_vec3() - chunk_transform.translation;
-        // noise value, if this is above 0.75 we spawn a tree
-        let value = noise.get_noise_2d(global_pos.x, global_pos.z);
+    for structure in STRUCTURE_DEFINITIONS.iter() {
+        // get noise
+        let mut noise = FastNoiseLite::with_seed(structure.noise_seed);
+        noise.set_frequency(Some(0.5));
+        noise.set_noise_type(Some(NoiseType::Perlin));
 
-        if value < 0.75 {
-            continue;
+        for local_pos in &chunk.voxel_positions {
+            // position of the voxel in global world space
+            let global_pos = local_pos.as_vec3() - chunk_transform.translation;
+            // noise value, if this is above the threshold we spawn the structure
+            let value = noise.get_noise_2d(global_pos.x, global_pos.z);
+
+            if value < structure.threshold {
+                continue;
+            }
+
+            // if value is > threshold
+            commands.get_entity(chunk_entity).unwrap().with_child((
+                Name::new(structure.model),
+                Transform {
+                    translation: Vec3::new(local_pos.x as f32, local_pos.y as f32, local_pos.z as f32) + structure.translation_offset,
+                    scale: structure.scale,
+                    ..default()
+                },
+
+                SceneRoot(
+                    assets.load(GltfAssetLabel::Scene(0).from_asset(structure.model)),
+                ),
+            ));
         }
-
-        // if value is > 0.75
-        commands.get_entity(chunk_entity).unwrap().with_child((
-            Name::new("tree"),
-            Transform {
-                translation: Vec3::new(local_pos.x as f32, local_pos.y as f32, local_pos.z as f32),
-                scale: Vec3::new(0.5, 0.5, 0.5),
-                ..default()
-            },
-
-            SceneRoot(
-                assets.load(GltfAssetLabel::Scene(0).from_asset("tree_textured.glb")),
-            ),
-        ));
-    }
-}
-
-fn bushes(
-    event: On<Add, Chunk>,
-    query: Query<(&Chunk, &Transform)>,
-
-    mut commands: Commands,
-    assets: Res<AssetServer>
-) {
-    // get chunk
-    let chunk_entity = event.entity;
-    let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
-    
-    // get noise
-    let mut noise = FastNoiseLite::with_seed(1024);
-    noise.set_frequency(Some(0.5));
-    noise.set_noise_type(Some(NoiseType::Perlin));
-
-    for local_pos in &chunk.voxel_positions {
-        // position of the voxel in global world space
-        let global_pos = local_pos.as_vec3() - chunk_transform.translation;
-        // noise value, if this is above 0.75 we spawn a tree
-        let value = noise.get_noise_2d(global_pos.x, global_pos.z);
-
-        if value < 0.75 {
-            continue;
-        }
-
-        // if value is > 0.75
-        commands.get_entity(chunk_entity).unwrap().with_child((
-            Name::new("tree"),
-            Transform {
-                translation: Vec3::new(local_pos.x as f32, local_pos.y as f32 + 1.25, local_pos.z as f32),
-                scale: Vec3::new(3.0, 3.0, 3.0),
-                ..default()
-            },
-
-            SceneRoot(
-                assets.load(GltfAssetLabel::Scene(0).from_asset("bush.glb")),
-            ),
-        ));
     }
 }
