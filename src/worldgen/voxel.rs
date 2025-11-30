@@ -1,9 +1,74 @@
 use std::collections::{HashMap, HashSet};
 
 use bevy::asset::RenderAssetUsages;
-use bevy::mesh::{VertexAttributeValues, Indices};
+use bevy::mesh::Indices;
 
 use bevy::prelude::*;
+
+/* --------------- */
+/*      consts     */
+/* --------------  */
+// #tag enums
+
+const CUBE_VERTEX_POSITIONS: [[f32; 3]; 24] = [
+    // front face
+    [-0.5, -0.5,  0.5], [0.5, -0.5,  0.5], [0.5,  0.5,  0.5], [-0.5,  0.5,  0.5],
+    // back face
+    [0.5, -0.5, -0.5], [-0.5, -0.5, -0.5], [-0.5,  0.5, -0.5], [0.5,  0.5, -0.5],
+    // right face
+    [0.5, -0.5,  0.5], [0.5, -0.5, -0.5], [ 0.5,  0.5, -0.5], [0.5,  0.5,  0.5],
+    // left face
+    [-0.5, -0.5, -0.5], [-0.5, -0.5,  0.5], [-0.5,  0.5,  0.5], [-0.5,  0.5, -0.5],
+    // top face
+    [-0.5,  0.5,  0.5], [0.5,  0.5,  0.5], [0.5,  0.5, -0.5], [-0.5,  0.5, -0.5],
+    // bottom face
+    [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, -0.5,  0.5], [-0.5, -0.5,  0.5],
+];
+
+const CUBE_VERTEX_NORMALS: [[f32; 3]; 24] = [
+    // front face
+    [0.0,  0.0,  1.0], [0.0,  0.0,  1.0], [0.0,  0.0,  1.0], [0.0,  0.0,  1.0],
+    // back face
+    [0.0,  0.0, -1.0], [0.0,  0.0, -1.0], [0.0,  0.0, -1.0], [0.0,  0.0, -1.0],
+    // right face
+    [1.0,  0.0,  0.0], [1.0,  0.0,  0.0], [1.0,  0.0,  0.0], [1.0,  0.0,  0.0],
+    // left face
+    [-1.0,  0.0,  0.0], [-1.0,  0.0,  0.0], [-1.0,  0.0,  0.0], [-1.0,  0.0,  0.0],
+    // top face
+    [0.0,  1.0,  0.0], [0.0,  1.0,  0.0], [0.0,  1.0,  0.0], [0.0,  1.0,  0.0],
+    // bottom face
+    [0.0, -1.0,  0.0], [0.0, -1.0,  0.0], [0.0, -1.0,  0.0], [0.0, -1.0,  0.0],
+];
+
+const CUBE_VERTEX_UVS: [[f32; 2]; 24] = [
+    // front face
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
+    // back face
+    [1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0],
+    // right face
+    [1.0, 1.0], [0.0, 1.0], [0.0, 0.0], [1.0, 0.0],
+    // left face
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
+    // top face
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
+    // bottom face
+    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+];
+
+const CUBE_VERTEX_INDICES: [u32; 36] = [
+    // front face
+    0, 1, 2,  2, 3, 0,
+    // back face
+    4, 5, 6,  6, 7, 4,
+    // right face
+    8, 9, 10,  10, 11, 8,
+    // left face
+    12, 13, 14,  14, 15, 12,
+    // top face
+    16, 17, 18,  18, 19, 16,
+    // bottom face
+    20, 21, 22,  22, 23, 20,
+];
 
 /* -------------- */
 /*      enums     */
@@ -38,29 +103,6 @@ impl VoxelFace {
 // #tag functions
 
 pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
-    let source_mesh = Mesh::from(Cuboid::new(1.0, 1.0, 1.0));
-    
-    // extract attributes from source mesh
-    let (positions, normals, uvs, indices) = {
-        let pos = match source_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap() {
-            VertexAttributeValues::Float32x3(vec) => vec,
-            _ => panic!("positions are not in 32x3 format")
-        };
-        let norm = match source_mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap() {
-            VertexAttributeValues::Float32x3(vec) => vec,
-            _ => panic!("normals are not in 32x3 format")
-        };
-        let uv = match source_mesh.attribute(Mesh::ATTRIBUTE_UV_0).unwrap() {
-            VertexAttributeValues::Float32x2(vec) => vec,
-            _ => panic!("UVs are not in 32x2 format")
-        };
-        let idx = match source_mesh.indices().unwrap() {
-            Indices::U32(vec) => vec,
-            _ => panic!("expected U32 indices for mesh"),
-        };
-        (pos, norm, uv, idx)
-    };
-
     // worst case scenario
     let max_vertices = 30;
 
@@ -79,14 +121,14 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
         let face_start = (face as usize) * 6;
         
         // process 6 vertices for this face
-        for &old_idx in &indices[face_start..face_start + 6] {
-            let old_idx = old_idx as usize;
+        for old_idx in CUBE_VERTEX_INDICES[face_start..face_start + 6].iter() {
+            let old_idx = *old_idx as usize;
             
             // get or insert vertex if it doesn't exist
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
-                new_positions.push(positions[old_idx]);
-                new_normals.push(normals[old_idx]);
-                new_uvs.push(uvs[old_idx]);
+                new_positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
+                new_normals.push(CUBE_VERTEX_NORMALS[old_idx]);
+                new_uvs.push(CUBE_VERTEX_UVS[old_idx]);
                 
                 let id = next_vertex_id;
                 next_vertex_id += 1;
