@@ -107,10 +107,10 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
     let max_vertices = 30;
 
     // new vectors for filtered attributes
-    let mut new_positions = Vec::with_capacity(max_vertices);
-    let mut new_normals = Vec::with_capacity(max_vertices);
-    let mut new_uvs = Vec::with_capacity(max_vertices);
-    let mut new_indices = Vec::with_capacity(max_vertices);
+    let mut positions = Vec::with_capacity(max_vertices);
+    let mut normals = Vec::with_capacity(max_vertices);
+    let mut uvs = Vec::with_capacity(max_vertices);
+    let mut indices = Vec::with_capacity(max_vertices);
 
     // map old vertex indices to new ones using a HashMap
     let mut vertex_map = HashMap::with_capacity(16);
@@ -126,16 +126,16 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
             
             // get or insert vertex if it doesn't exist
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
-                new_positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
-                new_normals.push(CUBE_VERTEX_NORMALS[old_idx]);
-                new_uvs.push(CUBE_VERTEX_UVS[old_idx]);
+                positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
+                normals.push(CUBE_VERTEX_NORMALS[old_idx]);
+                uvs.push(CUBE_VERTEX_UVS[old_idx]);
                 
                 let id = next_vertex_id;
                 next_vertex_id += 1;
                 id
             });
             
-            new_indices.push(new_idx);
+            indices.push(new_idx);
         }
     }
 
@@ -144,10 +144,10 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
         bevy::render::render_resource::PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
     )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, new_positions)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, new_normals)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, new_uvs)
-    .with_inserted_indices(Indices::U32(new_indices))
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+    .with_inserted_indices(Indices::U32(indices))
 }
 
 // uses an IVec so that it can be hashed properly
