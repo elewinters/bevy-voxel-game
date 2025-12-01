@@ -270,7 +270,7 @@ fn startup(
 
     // setup global material resource
     let global_material = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("grass3_dark.png")),
+        base_color_texture: Some(asset_server.load("textures/grass3_dark.png")),
         perceptual_roughness: 1.0,
         ..default()
     });

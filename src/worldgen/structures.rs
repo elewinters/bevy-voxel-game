@@ -22,7 +22,7 @@ struct Structure {
 const STRUCTURE_DEFINITIONS: [Structure; 2] = [
     // trees
     Structure {
-        model: "tree_textured.glb",
+        model: "models/tree_textured.glb",
 
         noise_seed: 1,
         threshold: 0.75,
@@ -32,7 +32,7 @@ const STRUCTURE_DEFINITIONS: [Structure; 2] = [
     },
     // bushes
     Structure {
-        model: "bush.glb",
+        model: "models/bush.glb",
 
         noise_seed: 2,
         threshold: 0.75,
