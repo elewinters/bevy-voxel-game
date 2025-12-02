@@ -103,7 +103,7 @@ const CUBE_VERTEX_NORMALS: [[f32; 3]; 24] = [
     (0,1) -------- (1,1)
 */
 
-const CUBE_VERTEX_UVS_FULL: [[f32; 2]; 24] = repeat_uvs!(
+const _CUBE_VERTEX_UVS_FULL: [[f32; 2]; 24] = repeat_uvs!(
     [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]
 );
 
@@ -176,7 +176,7 @@ const CUBE_VERTEX_INDICES: [u32; 36] = [
 /* -------------  */
 // #tag enums
 
-pub enum VoxelFace {
+pub enum Face {
     Front = 0,
     Back,
     Right,
@@ -185,32 +185,30 @@ pub enum VoxelFace {
     Bottom
 }
 
-impl VoxelFace {
-    pub fn all_faces() -> Vec<VoxelFace> {
+impl Face {
+    pub fn all() -> Vec<Face> {
         vec![
-            VoxelFace::Front,
-            VoxelFace::Back,
-            VoxelFace::Right,
-            VoxelFace::Left,
-            VoxelFace::Top,
-            VoxelFace::Bottom
+            Face::Front,
+            Face::Back,
+            Face::Right,
+            Face::Left,
+            Face::Top,
+            Face::Bottom
         ]
     }
 }
 
 #[derive(Clone, Eq, Hash, PartialEq)]
-pub enum VoxelTexture {
-    FullAtlas, // for debug purposes, displays the full atlas texture on the voxel
+pub enum Texture {
     Grass,
     Dirt,
 }
 
-impl VoxelTexture {
+impl Texture {
     fn uv_coords(&self) -> &'static [[f32; 2]] {
         match self {
-            VoxelTexture::FullAtlas => &CUBE_VERTEX_UVS_FULL,
-            VoxelTexture::Grass => &CUBE_VERTEX_UVS_GRASS,
-            VoxelTexture::Dirt => &CUBE_VERTEX_UVS_DIRT
+            Texture::Grass => &CUBE_VERTEX_UVS_GRASS,
+            Texture::Dirt => &CUBE_VERTEX_UVS_DIRT
         }
     }
 }
@@ -218,11 +216,11 @@ impl VoxelTexture {
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct VoxelData {
     pub position: IVec3,
-    pub texture: VoxelTexture
+    pub texture: Texture
 }
 
 impl VoxelData {
-    pub fn new(position: IVec3, texture: VoxelTexture) -> VoxelData {
+    pub fn new(position: IVec3, texture: Texture) -> VoxelData {
         Self {
             position,
             texture
@@ -235,7 +233,7 @@ impl VoxelData {
 /* ------------------ */
 // #tag functions
 
-pub fn voxel_mesh(faces: Vec<VoxelFace>, texture: &VoxelTexture) -> Mesh {
+pub fn voxel_mesh(faces: Vec<Face>, texture: &Texture) -> Mesh {
     // worst case scenario
     let max_vertices = 30;
 
@@ -284,14 +282,14 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>, texture: &VoxelTexture) -> Mesh {
 }
 
 // uses an IVec so that it can be hashed properly
-pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxels: &Vec<VoxelData>) -> bool {
+pub fn should_draw_face(face: &Face, voxel_pos: &IVec3, voxels: &Vec<VoxelData>) -> bool {
     let neighbor_pos = match face {
-        VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
-        VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
-        VoxelFace::Right => voxel_pos + IVec3::new(1, 0, 0),
-        VoxelFace::Left => voxel_pos + IVec3::new(-1, 0, 0),
-        VoxelFace::Top => voxel_pos + IVec3::new(0, 1, 0),
-        VoxelFace::Bottom => return false,
+        Face::Front => voxel_pos + IVec3::new(0, 0, 1),
+        Face::Back => voxel_pos + IVec3::new(0, 0, -1),
+        Face::Right => voxel_pos + IVec3::new(1, 0, 0),
+        Face::Left => voxel_pos + IVec3::new(-1, 0, 0),
+        Face::Top => voxel_pos + IVec3::new(0, 1, 0),
+        Face::Bottom => return false,
     };
     
     !voxels.iter().any(|voxel| voxel.position == neighbor_pos)

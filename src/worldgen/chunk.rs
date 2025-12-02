@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
-use super::voxel::{self, VoxelFace, VoxelData, VoxelTexture};
+use super::voxel::{self, Face, VoxelData, Texture};
 use super::structures;
 
 pub struct ChunkPlugin;
@@ -221,9 +221,9 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                 let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
 
                 let texture = if dirt_patch > 0.5 {
-                    VoxelTexture::Dirt
+                    Texture::Dirt
                 } else {
-                    VoxelTexture::Grass
+                    Texture::Grass
                 };
 
                 // add to voxels vec
@@ -241,7 +241,7 @@ fn chunk_mesh(voxels: &Vec<VoxelData>) -> Mesh {
 
     // generate mesh based on voxels
     for voxel in voxels {
-        let mut faces = VoxelFace::all_faces();
+        let mut faces = Face::all();
 
         // only keep the faces that we should draw
         faces.retain(|face| voxel::should_draw_face(face, &voxel.position, voxels));
