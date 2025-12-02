@@ -35,7 +35,7 @@ const STRUCTURE_DEFINITIONS: [Structure; 2] = [
         model: "models/bush.glb",
 
         noise_seed: 2,
-        threshold: 0.75,
+        threshold: 0.85,
 
         translation_offset: Vec3::new(0.0, 1.25, 0.0),
         scale: Vec3::new(3.0, 3.0, 3.0)
