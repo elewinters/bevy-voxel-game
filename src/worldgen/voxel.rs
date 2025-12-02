@@ -72,25 +72,60 @@ const CUBE_VERTEX_NORMALS: [[f32; 3]; 24] = [
 ];
 
 /*
-(0,1) -------- (1,1)
-  |              |
-  |   TEXTURE    |
-  |              |
-(0,0) -------- (1,0)
+    the UV coordinate system in bevy is different from the rest of the engine
+    top left is the origin instead of the bottom left
+    this is consistent with vulkan/dx12 but NOT opengl
+
+    (0,0) -------- (1,0)
+      |              |
+      |   TEXTURE    |
+      |              |
+    (0,1) -------- (1,1)
 */
-const CUBE_VERTEX_UVS: [[f32; 2]; 24] = [
+
+const CUBE_VERTEX_UVS_FULL: [[f32; 2]; 24] = [
     // front face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
     // back face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
     // right face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
     // left face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
     // top face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
     // bottom face
-    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
+];
+
+const CUBE_VERTEX_UVS_GRASS: [[f32; 2]; 24] = [
+    // front face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+    // back face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+    // right face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+    // left face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+    // top face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+    // bottom face
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
+];
+
+const CUBE_VERTEX_UVS_DIRT: [[f32; 2]; 24] = [
+    // front face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
+    // back face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
+    // right face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
+    // left face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
+    // top face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
+    // bottom face
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
 ];
 
 /*
@@ -207,7 +242,7 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
                 positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
                 normals.push(CUBE_VERTEX_NORMALS[old_idx]);
-                uvs.push(CUBE_VERTEX_UVS[old_idx]);
+                uvs.push(CUBE_VERTEX_UVS_GRASS[old_idx]);
                 
                 let id = next_vertex_id;
                 next_vertex_id += 1;
