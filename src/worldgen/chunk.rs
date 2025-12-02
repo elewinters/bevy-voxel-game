@@ -26,9 +26,6 @@ impl Plugin for ChunkPlugin {
         app.add_systems(Update, handle_chunk_messages);
         app.add_systems(Update, despawn_chunks);
 
-        // responds to RegenerateChunk event
-        app.add_observer(regenerate_chunk);
-
         // resources
         app.init_resource::<ExistingChunks>();
     }
@@ -90,14 +87,6 @@ pub struct ChunkMessage {
     voxels: HashSet<VoxelData>,
     mesh: Mesh,
 }
-
-/* --------------- */
-/*      events     */
-/* --------------- */
-// #tag events
-
-#[derive(Event)]
-pub struct RegenerateChunk(pub Entity);
 
 /* ------------------ */
 /*      resources     */
@@ -391,42 +380,4 @@ fn despawn_chunks(
             existing_chunks.0.remove(&chunk_pos);
         }
     }
-}
-
-// responds to the RegenerateChunk event
-// despawns a chunk and creates a new one at the same position with the specified voxel data
-// used for block breaking/chunk manipulation in general by other parts of the code
-fn regenerate_chunk(
-    event: On<RegenerateChunk>,
-
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    global_material: Res<GlobalMaterial>,
-
-    chunk_query: Query<(&Chunk, &Transform)>,
-) {
-    let entity = event.0;
-
-    // get chunk component and chunk transform through entity
-    let (chunk, chunk_transform) = match chunk_query.get(entity) {
-        Ok(x) => x,
-        _ => return
-    };
-
-    // despawn chunk
-    commands.entity(entity).despawn();
-
-    // generate new mesh based on new voxel_positions
-    let mesh = chunk_mesh(&chunk.voxels);
-
-    // spawn new chunk
-    commands.spawn(ChunkBundle(
-        chunk.clone(),
-        Name::new("chunk"),
-        
-        *chunk_transform, // this performs a copy
-
-        Mesh3d(meshes.add(mesh)),
-        MeshMaterial3d(global_material.0.clone()),
-    ));
 }
