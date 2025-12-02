@@ -238,7 +238,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
     voxels
 }
 
-fn chunk_mesh(voxels: &Vec<VoxelData>) -> Mesh {
+fn chunk_mesh(voxels: &[VoxelData]) -> Mesh {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 

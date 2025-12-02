@@ -282,7 +282,7 @@ pub fn voxel_mesh(faces: Vec<Face>, texture: &Texture) -> Mesh {
 }
 
 // uses an IVec so that it can be hashed properly
-pub fn should_draw_face(face: &Face, voxel_pos: &IVec3, voxels: &Vec<VoxelData>) -> bool {
+pub fn should_draw_face(face: &Face, voxel_pos: &IVec3, voxels: &[VoxelData]) -> bool {
     let neighbor_pos = match face {
         Face::Front => voxel_pos + IVec3::new(0, 0, 1),
         Face::Back => voxel_pos + IVec3::new(0, 0, -1),
