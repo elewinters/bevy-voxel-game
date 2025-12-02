@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::mesh::Indices;
@@ -284,7 +284,7 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>, texture: &VoxelTexture) -> Mesh {
 }
 
 // uses an IVec so that it can be hashed properly
-pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxels: &HashSet<VoxelData>) -> bool {
+pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxels: &Vec<VoxelData>) -> bool {
     let neighbor_pos = match face {
         VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
         VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
@@ -294,6 +294,5 @@ pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxels: &HashSet<Vo
         VoxelFace::Bottom => return false,
     };
     
-    // !voxels.contains(&neighbor_pos)
-    true
+    !voxels.iter().any(|voxel| voxel.position == neighbor_pos)
 }

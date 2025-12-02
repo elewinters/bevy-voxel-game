@@ -84,7 +84,7 @@ impl ChunkPosition {
 
 pub struct ChunkMessage {
     transform: Transform,
-    voxels: HashSet<VoxelData>,
+    voxels: Vec<VoxelData>,
     mesh: Mesh,
 }
 
@@ -117,7 +117,7 @@ struct ChunkChannel {
 #[derive(Component, Clone)]
 #[require(Transform, Visibility)]
 pub struct Chunk {
-    pub voxels: HashSet<VoxelData>
+    pub voxels: Vec<VoxelData>
 }
 
 /* ---------------- */
@@ -189,10 +189,10 @@ fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
     new_chunks
 }
 
-fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<VoxelData> {
+fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelData> {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
-    let mut voxels: HashSet<VoxelData> = HashSet::with_capacity(CHUNK_LEN);
+    let mut voxels: Vec<VoxelData> = Vec::with_capacity(CHUNK_LEN);
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
@@ -211,7 +211,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<Vox
                 );
 
                 // add to voxel_positions
-                voxels.insert(VoxelData::new(voxel_position.as_ivec3(), VoxelTexture::Dirt));
+                voxels.push(VoxelData::new(voxel_position.as_ivec3(), VoxelTexture::Dirt));
             }
         }
     }
@@ -219,7 +219,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<Vox
     voxels
 }
 
-fn chunk_mesh(voxels: &HashSet<VoxelData>) -> Mesh {
+fn chunk_mesh(voxels: &Vec<VoxelData>) -> Mesh {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
