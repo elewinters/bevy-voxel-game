@@ -290,7 +290,7 @@ fn startup(
         },
 
         SceneRoot(
-            asset_server.load(GltfAssetLabel::Scene(0).from_asset("bush.glb")),
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/bush.glb")),
         ),
     ));
 }
