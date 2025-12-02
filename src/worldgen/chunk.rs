@@ -190,11 +190,10 @@ fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
 }
 
 fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelData> {
-    // hashset of voxel positions
-    // we use an IVec so that we can hash it
+    // vector of voxels, their positions and textures and what not
     let mut voxels: Vec<VoxelData> = Vec::with_capacity(CHUNK_LEN);
 
-    // determine position of each voxel and add to voxel_positions
+    // determine position and texture of each voxel and add to voxels
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for _ in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
