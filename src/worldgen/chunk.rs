@@ -62,6 +62,10 @@ const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get
 const HILLS_HEIGHT_VARIATION: f32 = 50.0;
 const HILLS_WAVELENGTH: f32 = 5.0;
 
+// value from 0.0 to 1.0, if the noise value is above DIRT_PATCHES_THRESHOLD the terrain will be dirt instead of grass
+// lower values mean more dirt, higher values mean more grass
+const DIRT_PATCHES_THRESHOLD: f32 = 0.5; 
+
 /* ---------------- */
 /*      structs     */
 /* ---------------- */
@@ -219,7 +223,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                 let dirt_patch = noise.get_noise_2d(global_pos_x, global_pos_z);
                 let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
 
-                let texture = if dirt_patch > 0.5 {
+                let texture = if dirt_patch > DIRT_PATCHES_THRESHOLD {
                     Texture::Dirt
                 } else {
                     Texture::Grass
