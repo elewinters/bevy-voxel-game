@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
-use super::{voxel, voxel::VoxelFace};
+use super::voxel::{self, VoxelFace, VoxelData, VoxelTexture};
 use super::structures;
 
 pub struct ChunkPlugin;
@@ -87,7 +87,7 @@ impl ChunkPosition {
 
 pub struct ChunkMessage {
     transform: Transform,
-    voxel_positions: HashSet<IVec3>,
+    voxels: HashSet<VoxelData>,
     mesh: Mesh,
 }
 
@@ -128,7 +128,7 @@ struct ChunkChannel {
 #[derive(Component, Clone)]
 #[require(Transform, Visibility)]
 pub struct Chunk {
-    pub voxel_positions: HashSet<IVec3>
+    pub voxels: HashSet<VoxelData>
 }
 
 /* ---------------- */
@@ -200,10 +200,10 @@ fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
     new_chunks
 }
 
-fn chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<IVec3> {
+fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> HashSet<VoxelData> {
     // hashset of voxel positions
     // we use an IVec so that we can hash it
-    let mut voxel_positions: HashSet<IVec3> = HashSet::with_capacity(CHUNK_LEN);
+    let mut voxels: HashSet<VoxelData> = HashSet::with_capacity(CHUNK_LEN);
 
     // determine position of each voxel and add to voxel_positions
     for x in 0..CHUNK_SIZE_HORIZONTAL {
@@ -222,28 +222,28 @@ fn chunk_voxel_positions(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Ha
                 );
 
                 // add to voxel_positions
-                voxel_positions.insert(voxel_position.as_ivec3());
+                voxels.insert(VoxelData::new(voxel_position.as_ivec3(), VoxelTexture::Dirt));
             }
         }
     }
 
-    voxel_positions
+    voxels
 }
 
-fn chunk_mesh(voxel_positions: &HashSet<IVec3>) -> Mesh {
+fn chunk_mesh(voxels: &HashSet<VoxelData>) -> Mesh {
     // chunk mesh, initial value is essentially empty. we add individual voxels to this mesh to generate one big mesh
     let mut chunk_mesh = Mesh::from(Cuboid::new(0.0, 0.0, 0.0));
 
     // generate mesh based on voxels
-    for voxel_pos in voxel_positions {
+    for voxel in voxels {
         let mut faces = VoxelFace::all_faces();
 
         // only keep the faces that we should draw
-        faces.retain(|face| voxel::should_draw_face(face, voxel_pos, voxel_positions));
+        faces.retain(|face| voxel::should_draw_face(face, &voxel.position, voxels));
 
         // merge mesh
-        let mut voxel_mesh = voxel::voxel_mesh(faces);
-        voxel_mesh.translate_by(voxel_pos.as_vec3());
+        let mut voxel_mesh = voxel::voxel_mesh(faces, &voxel.texture);
+        voxel_mesh.translate_by(voxel.position.as_vec3());
         
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");
     }
@@ -327,14 +327,14 @@ fn send_chunk_messages(
                 chunk_pos_clone.z as f32
             );
 
-            let voxel_positions = chunk_voxel_positions(&noise, &chunk_pos_clone);
-            let mesh = chunk_mesh(&voxel_positions);
+            let voxels = chunk_voxels(&noise, &chunk_pos_clone);
+            let mesh = chunk_mesh(&voxels);
 
             // we're done computing, send a message over the chunk channel
             let _ = sender.send(ChunkMessage {
                 transform,
 
-                voxel_positions,
+                voxels,
                 mesh
             });
         })
@@ -356,7 +356,7 @@ fn handle_chunk_messages(
     for chunk_data in channel.receiver.try_iter() {
         commands.spawn(ChunkBundle(
             Chunk {
-                voxel_positions: chunk_data.voxel_positions
+                voxels: chunk_data.voxels
             },
             Name::new("chunk"),
 
@@ -417,7 +417,7 @@ fn regenerate_chunk(
     commands.entity(entity).despawn();
 
     // generate new mesh based on new voxel_positions
-    let mesh = chunk_mesh(&chunk.voxel_positions);
+    let mesh = chunk_mesh(&chunk.voxels);
 
     // spawn new chunk
     commands.spawn(ChunkBundle(

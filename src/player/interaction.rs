@@ -95,45 +95,6 @@ fn manipulate_voxels(
 ) {
     // get entity of event
     let entity = event.entity;
-    
-    // the chunk that we hit and its transform
-    let (mut chunk, chunk_transform) = match chunk_query.get_mut(entity){
-        Ok(x) => x,
-        Err(_) => return // entity not in chunk_query, we return as that means that whatever we clicked on isnt a chunk
-    };
-
-    // event data hit position
-    let (pos, normal) = match (event.hit.position, event.hit.normal) {
-        (Some(pos), Some(normal)) => (pos, normal),
-        _ => return
-    };
-
-    // convert hit position to local chunk space
-    let local_pos = pos - chunk_transform.translation;
-
-    match event.button {
-        // voxel breaking
-        PointerButton::Primary => {
-            let pos = align_hit_pos_inward(local_pos, normal);
-
-            // remove hit voxel from voxel_positions
-            // dont regenerate chunk if block doesn't exist
-            if !chunk.voxel_positions.remove(&pos) {
-                return;
-            }
-        },
-        // voxel placing
-        PointerButton::Secondary => {
-            let pos = align_hit_pos_outward(local_pos, normal);
-
-            // add new voxel position to voxel_positions
-            // dont regenerate chunk if it already exists
-            if !chunk.voxel_positions.insert(pos) {
-                return;
-            }
-        },
-        _ => return
-    }
 
     // regenerate chunk
     commands.trigger(chunk::RegenerateChunk(entity))

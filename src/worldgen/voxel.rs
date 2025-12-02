@@ -198,12 +198,44 @@ impl VoxelFace {
     }
 }
 
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub enum VoxelTexture {
+    FullAtlas, // for debug purposes, displays the full atlas texture on the voxel
+    Grass,
+    Dirt,
+}
+
+impl VoxelTexture {
+    fn uv_coords(&self) -> &'static [[f32; 2]] {
+        match self {
+            VoxelTexture::FullAtlas => &CUBE_VERTEX_UVS_FULL,
+            VoxelTexture::Grass => &CUBE_VERTEX_UVS_GRASS,
+            VoxelTexture::Dirt => &CUBE_VERTEX_UVS_DIRT
+        }
+    }
+}
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct VoxelData {
+    pub position: IVec3,
+    pub texture: VoxelTexture
+}
+
+impl VoxelData {
+    pub fn new(position: IVec3, texture: VoxelTexture) -> VoxelData {
+        Self {
+            position,
+            texture
+        }
+    }
+}
+
 /* ------------------ */
 /*      functions     */
 /* ------------------ */
 // #tag functions
 
-pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
+pub fn voxel_mesh(faces: Vec<VoxelFace>, texture: &VoxelTexture) -> Mesh {
     // worst case scenario
     let max_vertices = 30;
 
@@ -229,7 +261,7 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
                 positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
                 normals.push(CUBE_VERTEX_NORMALS[old_idx]);
-                uvs.push(CUBE_VERTEX_UVS_GRASS[old_idx]);
+                uvs.push(texture.uv_coords()[old_idx]);
                 
                 let id = next_vertex_id;
                 next_vertex_id += 1;
@@ -252,7 +284,7 @@ pub fn voxel_mesh(faces: Vec<VoxelFace>) -> Mesh {
 }
 
 // uses an IVec so that it can be hashed properly
-pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxel_positions: &HashSet<IVec3>) -> bool {
+pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxels: &HashSet<VoxelData>) -> bool {
     let neighbor_pos = match face {
         VoxelFace::Front => voxel_pos + IVec3::new(0, 0, 1),
         VoxelFace::Back => voxel_pos + IVec3::new(0, 0, -1),
@@ -262,5 +294,6 @@ pub fn should_draw_face(face: &VoxelFace, voxel_pos: &IVec3, voxel_positions: &H
         VoxelFace::Bottom => return false,
     };
     
-    !voxel_positions.contains(&neighbor_pos)
+    // !voxels.contains(&neighbor_pos)
+    true
 }

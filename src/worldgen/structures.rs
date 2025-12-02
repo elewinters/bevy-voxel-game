@@ -64,7 +64,8 @@ fn structures(
         noise.set_frequency(Some(0.5));
         noise.set_noise_type(Some(NoiseType::Perlin));
 
-        for local_pos in &chunk.voxel_positions {
+        for chunk_data in &chunk.voxels {
+            let local_pos = chunk_data.position;
             // position of the voxel in global world space
             let global_pos = local_pos.as_vec3() - chunk_transform.translation;
             // noise value, if this is above the threshold we spawn the structure
