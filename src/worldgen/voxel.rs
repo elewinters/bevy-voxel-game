@@ -6,6 +6,26 @@ use bevy::mesh::Indices;
 use bevy::prelude::*;
 
 /* --------------- */
+/*      macros     */
+/* --------------  */
+// #tag macros
+
+// repeat all 4 UV values for all 6 faces of a cube
+// saves us from having to copy and paste the same 4 arrays 6 times
+macro_rules! repeat_uvs {
+    ($uv0:expr, $uv1:expr, $uv2:expr, $uv3:expr) => {
+        [
+            $uv0, $uv1, $uv2, $uv3,
+            $uv0, $uv1, $uv2, $uv3,
+            $uv0, $uv1, $uv2, $uv3,
+            $uv0, $uv1, $uv2, $uv3,
+            $uv0, $uv1, $uv2, $uv3,
+            $uv0, $uv1, $uv2, $uv3,
+        ]
+    };
+}
+
+/* --------------- */
 /*      consts     */
 /* --------------  */
 // #tag enums
@@ -83,50 +103,17 @@ const CUBE_VERTEX_NORMALS: [[f32; 3]; 24] = [
     (0,1) -------- (1,1)
 */
 
-const CUBE_VERTEX_UVS_FULL: [[f32; 2]; 24] = [
-    // front face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-    // back face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-    // right face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-    // left face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-    // top face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-    // bottom face
-    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],
-];
+const CUBE_VERTEX_UVS_FULL: [[f32; 2]; 24] = repeat_uvs!(
+    [0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]
+);
 
-const CUBE_VERTEX_UVS_GRASS: [[f32; 2]; 24] = [
-    // front face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-    // back face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-    // right face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-    // left face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-    // top face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-    // bottom face
-    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0],
-];
+const CUBE_VERTEX_UVS_GRASS: [[f32; 2]; 24] = repeat_uvs!(
+    [0.0, 0.5], [0.5, 0.5], [0.5, 0.0], [0.0, 0.0]
+);
 
-const CUBE_VERTEX_UVS_DIRT: [[f32; 2]; 24] = [
-    // front face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-    // back face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-    // right face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-    // left face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-    // top face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-    // bottom face
-    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0],
-];
+const CUBE_VERTEX_UVS_DIRT: [[f32; 2]; 24] = repeat_uvs!(
+    [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0]
+);
 
 /*
     front face has 4 vertices (positions defined above in CUBE_VERTEX_POSITIONS):
