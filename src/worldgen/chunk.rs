@@ -198,20 +198,36 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for _ in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
-                // determine position
+                let pos_x = x as f32;
+                let pos_z = z as f32;
+
+                let global_pos_x = pos_x + chunk_pos.x as f32;
+                let global_pos_z = pos_z + chunk_pos.z as f32;
+
+                // determine voxel position
                 let voxel_position = Vec3::new(
-                    x as f32,
+                    pos_x,
                     terrain_noise(
                         noise,
 
-                        x as f32 + chunk_pos.x as f32,
-                        z as f32 + chunk_pos.z as f32
+                        global_pos_x,
+                        global_pos_z
                     ), 
-                    z as f32
+                    pos_z
                 );
 
-                // add to voxel_positions
-                voxels.push(VoxelData::new(voxel_position.as_ivec3(), VoxelTexture::Dirt));
+                // determine texture
+                let dirt_patch = noise.get_noise_2d(global_pos_x, global_pos_z);
+                let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
+
+                let texture = if dirt_patch > 0.5 {
+                    VoxelTexture::Dirt
+                } else {
+                    VoxelTexture::Grass
+                };
+
+                // add to voxels vec
+                voxels.push(VoxelData::new(voxel_position.as_ivec3(), texture));
             }
         }
     }
