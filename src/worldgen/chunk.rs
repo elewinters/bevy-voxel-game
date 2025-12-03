@@ -278,7 +278,7 @@ fn startup(
 
     // setup global material resource
     let global_material = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("atlas.png")),
+        base_color_texture: Some(asset_server.load("atlas_128x128.png")),
         perceptual_roughness: 1.0,
         ..default()
     });
