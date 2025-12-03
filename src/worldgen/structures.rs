@@ -19,8 +19,8 @@ struct Structure {
     scale: Vec3
 }
 
-const STRUCTURE_DEFINITIONS: [Structure; 2] = [
-    // trees
+const STRUCTURE_DEFINITIONS: [Structure; 4] = [
+    // tree
     Structure {
         model: "models/tree_textured.glb",
 
@@ -30,7 +30,7 @@ const STRUCTURE_DEFINITIONS: [Structure; 2] = [
         translation_offset: Vec3::ZERO,
         scale: Vec3::new(0.5, 0.5, 0.5),
     },
-    // bushes
+    // bush
     Structure {
         model: "models/bush.glb",
 
@@ -38,7 +38,27 @@ const STRUCTURE_DEFINITIONS: [Structure; 2] = [
         threshold: 0.85,
 
         translation_offset: Vec3::new(0.0, 1.25, 0.0),
-        scale: Vec3::new(3.0, 3.0, 3.0)
+        scale: Vec3::new(2.5, 2.5, 2.5)
+    },
+    // grass 1
+    Structure {
+        model: "models/grass1.glb",
+
+        noise_seed: 3,
+        threshold: 0.5,
+
+        translation_offset: Vec3::new(0.0, 1.05, 0.0),
+        scale: Vec3::new(2.5, 2.5, 2.5)
+    },
+    // grass 2
+    Structure {
+        model: "models/grass2.glb",
+
+        noise_seed: 4,
+        threshold: 0.5,
+
+        translation_offset: Vec3::new(0.0, 1.0, 0.0),
+        scale: Vec3::new(2.5, 2.5, 2.5)
     }
 ];
 
