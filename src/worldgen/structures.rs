@@ -19,7 +19,7 @@ struct Structure {
     scale: Vec3
 }
 
-const STRUCTURE_DEFINITIONS: [Structure; 4] = [
+const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // tree
     Structure {
         model: "models/tree_textured.glb",
@@ -59,6 +59,26 @@ const STRUCTURE_DEFINITIONS: [Structure; 4] = [
 
         translation_offset: Vec3::new(0.0, 1.0, 0.0),
         scale: Vec3::new(2.5, 2.5, 2.5)
+    },
+    // mushroom
+    Structure {
+        model: "models/mushroom.glb",
+
+        noise_seed: 5,
+        threshold: 0.85,
+
+        translation_offset: Vec3::new(0.0, 1.0, 0.0),
+        scale: Vec3::new(2.5, 2.5, 2.5)
+    },
+    // rose
+    Structure {
+        model: "models/rose.glb",
+
+        noise_seed: 6,
+        threshold: 0.80,
+
+        translation_offset: Vec3::new(0.0, 0.9, 0.0),
+        scale: Vec3::new(1.5, 1.5, 1.5)
     }
 ];
 

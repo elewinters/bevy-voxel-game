@@ -44,7 +44,7 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk gen constants
-const RENDER_DISTANCE: i32 = 16; // try and make sure that this number is even (cleanly divisible by 2)
+const RENDER_DISTANCE: i32 = 6; // try and make sure that this number is even (cleanly divisible by 2)
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize) * (RENDER_DISTANCE as usize);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
