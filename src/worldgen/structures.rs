@@ -27,7 +27,7 @@ struct Structure {
     spawn_on: HashMap<Texture, f32>
 }
 
-static STRUCTURE_DEFINITIONS: LazyLock<[Structure; 7]> = LazyLock::new(|| {[
+static STRUCTURE_DEFINITIONS: LazyLock<[Structure; 8]> = LazyLock::new(|| {[
     // tree
     Structure {
         model: "models/tree_textured.glb",
@@ -93,7 +93,7 @@ static STRUCTURE_DEFINITIONS: LazyLock<[Structure; 7]> = LazyLock::new(|| {[
         translation_offset: Vec3::new(0.0, 0.9, 0.0),
         scale: Vec3::new(1.5, 1.5, 1.5)
     },
-    // rose
+    // rock
     Structure {
         model: "models/rock.glb",
         spawn_on: HashMap::from([
@@ -103,6 +103,17 @@ static STRUCTURE_DEFINITIONS: LazyLock<[Structure; 7]> = LazyLock::new(|| {[
 
         translation_offset: Vec3::new(0.0, 0.6, 0.0),
         scale: Vec3::new(0.3, 0.3, 0.3)
+    },
+    // stick
+    Structure {
+        model: "models/stick.glb",
+        spawn_on: HashMap::from([
+            (Texture::Grass, 0.9),
+            (Texture::Dirt, 0.8),
+        ]),
+
+        translation_offset: Vec3::new(0.0, 0.6, 0.0),
+        scale: Vec3::new(0.35, 0.35, 0.35)
     }
 ]});
 
