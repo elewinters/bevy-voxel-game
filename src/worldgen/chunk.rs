@@ -51,6 +51,8 @@ const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
 
+const SEA_LEVEL: f32 = -15.0;
+
 // noise constants
 const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
 
@@ -208,7 +210,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                 let global_pos_z = pos_z + chunk_pos.z as f32;
 
                 // determine voxel position
-                let voxel_position = Vec3::new(
+                let mut voxel_position = Vec3::new(
                     pos_x,
                     terrain_noise(
                         noise,
@@ -222,8 +224,11 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                 // determine texture
                 let dirt_patch = noise.get_noise_2d(global_pos_x, global_pos_z);
                 let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
-
-                let texture = if dirt_patch > DIRT_PATCHES_THRESHOLD {
+                
+                let texture = if voxel_position.y < SEA_LEVEL {
+                    voxel_position.y = SEA_LEVEL;
+                    Texture::Water
+                } else if dirt_patch > DIRT_PATCHES_THRESHOLD {
                     Texture::Dirt
                 } else {
                     Texture::Grass
@@ -278,7 +283,7 @@ fn startup(
 
     // setup global material resource
     let global_material = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("atlas_128x128.png")),
+        base_color_texture: Some(asset_server.load("atlas.png")),
         perceptual_roughness: 1.0,
         ..default()
     });

@@ -115,6 +115,10 @@ const CUBE_VERTEX_UVS_DIRT: [[f32; 2]; 24] = repeat_uvs!(
     [0.5, 0.5], [1.0, 0.5], [1.0, 0.0], [0.5, 0.0]
 );
 
+const CUBE_VERTEX_UVS_WATER: [[f32;2]; 24] = repeat_uvs!(
+    [0.0, 1.0], [0.5, 1.0], [0.5, 0.5], [0.0, 0.5]
+);
+
 /*
     front face has 4 vertices (positions defined above in CUBE_VERTEX_POSITIONS):
     3 --------- 2
@@ -202,13 +206,15 @@ impl Face {
 pub enum Texture {
     Grass,
     Dirt,
+    Water,
 }
 
 impl Texture {
     fn uv_coords(&self) -> &'static [[f32; 2]] {
         match self {
             Texture::Grass => &CUBE_VERTEX_UVS_GRASS,
-            Texture::Dirt => &CUBE_VERTEX_UVS_DIRT
+            Texture::Dirt => &CUBE_VERTEX_UVS_DIRT,
+            Texture::Water => &CUBE_VERTEX_UVS_WATER
         }
     }
 }
