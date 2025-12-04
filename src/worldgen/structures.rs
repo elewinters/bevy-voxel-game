@@ -1,5 +1,5 @@
 use std::sync::LazyLock;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use fastnoise_lite::*;
@@ -111,6 +111,9 @@ fn structures(
     let chunk_entity = event.entity;
     let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
 
+    // store the positions of blocks that we have already spawned a structure so we don't spawn structures in the same spot multiple times
+    let mut taken_blocks = HashSet::new();
+
     for (i, structure) in STRUCTURE_DEFINITIONS.iter().enumerate() {
         // get noise
         let mut noise = FastNoiseLite::with_seed(i as i32);
@@ -130,6 +133,10 @@ fn structures(
             };
 
             if value < *threshold {
+                continue;
+            }
+
+            if !taken_blocks.insert(local_pos) {
                 continue;
             }
 
