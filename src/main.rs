@@ -25,7 +25,6 @@ fn main() {
     // bevy/ecosystem plugins
     app.add_plugins((
         DefaultPlugins.set(ImagePlugin::default_nearest()),
-        MeshPickingPlugin,
     ));
 
     // user plugins
