@@ -13,7 +13,6 @@ impl Plugin for StructuresPlugin {
 struct Structure {
     model: &'static str,
 
-    noise_seed: i32,
     threshold: f32,
     translation_offset: Vec3,
     scale: Vec3
@@ -23,8 +22,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // tree
     Structure {
         model: "models/tree_textured.glb",
-
-        noise_seed: 1,
         threshold: 0.75,
 
         translation_offset: Vec3::ZERO,
@@ -33,8 +30,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // bush
     Structure {
         model: "models/bush.glb",
-
-        noise_seed: 2,
         threshold: 0.85,
 
         translation_offset: Vec3::new(0.0, 1.25, 0.0),
@@ -43,8 +38,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // grass 1
     Structure {
         model: "models/grass1.glb",
-
-        noise_seed: 3,
         threshold: 0.5,
 
         translation_offset: Vec3::new(0.0, 1.05, 0.0),
@@ -53,8 +46,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // grass 2
     Structure {
         model: "models/grass2.glb",
-
-        noise_seed: 4,
         threshold: 0.5,
 
         translation_offset: Vec3::new(0.0, 1.0, 0.0),
@@ -63,8 +54,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // mushroom
     Structure {
         model: "models/mushroom.glb",
-
-        noise_seed: 5,
         threshold: 0.85,
 
         translation_offset: Vec3::new(0.0, 1.0, 0.0),
@@ -73,8 +62,6 @@ const STRUCTURE_DEFINITIONS: [Structure; 6] = [
     // rose
     Structure {
         model: "models/rose.glb",
-
-        noise_seed: 6,
         threshold: 0.80,
 
         translation_offset: Vec3::new(0.0, 0.9, 0.0),
@@ -98,9 +85,9 @@ fn structures(
     let chunk_entity = event.entity;
     let (chunk, chunk_transform) = query.get(chunk_entity).unwrap();
 
-    for structure in STRUCTURE_DEFINITIONS.iter() {
+    for (i, structure) in STRUCTURE_DEFINITIONS.iter().enumerate() {
         // get noise
-        let mut noise = FastNoiseLite::with_seed(structure.noise_seed);
+        let mut noise = FastNoiseLite::with_seed(i as i32);
         noise.set_frequency(Some(0.5));
         noise.set_noise_type(Some(NoiseType::Perlin));
 
