@@ -225,7 +225,7 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                 let dirt_patch = noise.get_noise_2d(global_pos_x, global_pos_z);
                 let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
                 
-                let texture = if voxel_position.y < SEA_LEVEL {
+                let texture = if voxel_position.y <= SEA_LEVEL {
                     voxel_position.y = SEA_LEVEL;
                     Texture::Water
                 } else if dirt_patch > DIRT_PATCHES_THRESHOLD {
