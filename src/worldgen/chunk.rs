@@ -38,17 +38,17 @@ impl Plugin for ChunkPlugin {
 // #tag constants
 
 // chunk gen constants
-const RENDER_DISTANCE: i32 = 6; // try and make sure that this number is even (cleanly divisible by 2)
+const RENDER_DISTANCE: i32 = 16; // try and make sure that this number is even (cleanly divisible by 2)
 const CHUNK_GRID_LEN: usize = (RENDER_DISTANCE as usize) * (RENDER_DISTANCE as usize);
 
 const CHUNK_SIZE_HORIZONTAL: i32 = 32;
 const CHUNK_SIZE_VERTICAL: i32 = 1;
 const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usize;
 
-const SEA_LEVEL: f32 = -15.0;
+const SEA_LEVEL: f32 = -10.0;
 
 // noise constants
-const FREQUENCY: f32 = 0.006; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
+const FREQUENCY: f32 = 0.02; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
 
 const PLAINS_HEIGHT_VARIATION: f32 = 10.0;
 const PLAINS_VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
@@ -58,11 +58,11 @@ const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get
 const HILLS_HEIGHT_VARIATION: f32 = 50.0;
 const HILLS_WAVELENGTH: f32 = 5.0;
 
-const MOUNTAINS_HEIGHT_VARIATION: f32 = 3_000.0;
+const MOUNTAINS_HEIGHT_VARIATION: f32 = 800.0;
 
 // bigger values mean less but bigger mountains while smaller values mean more but smaller mountains
 // think of this as a height gradient of sorts
-const MOUNTAINS_WAVELENGTH: f32 = 12.5;
+const MOUNTAINS_WAVELENGTH: f32 = 13.0;
 
 // value from 0.0 to 1.0, if the noise value is above DIRT_PATCHES_THRESHOLD the terrain will be dirt instead of grass
 // lower values mean more dirt, higher values mean more grass

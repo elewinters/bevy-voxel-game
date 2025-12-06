@@ -10,7 +10,6 @@ impl Plugin for WorldGenPlugin {
         app.add_systems(Startup, spawn_atmosphere);
 
         app.add_plugins(chunk::ChunkPlugin);
-        app.add_plugins(structures::StructuresPlugin);
 
         app.add_systems(Startup, voxel::setup_global_texture);
     }
