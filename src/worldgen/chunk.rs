@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
-use super::voxel::{self, Face, VoxelData, Texture};
+use super::voxel::{self, Face, VoxelData, VoxelType};
 use super::structures;
 
 pub struct ChunkPlugin;
@@ -196,10 +196,10 @@ fn chunk_grid(player_pos: Vec3) -> HashSet<ChunkPosition> {
 }
 
 fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelData> {
-    // vector of voxels, their positions and textures and what not
+    // vector of voxels, their positions and types and what not
     let mut voxels: Vec<VoxelData> = Vec::with_capacity(CHUNK_LEN);
 
-    // determine position and texture of each voxel and add to voxels
+    // determine position and voxel type of each voxel and add to voxels
     for x in 0..CHUNK_SIZE_HORIZONTAL {
         for _ in 0..CHUNK_SIZE_VERTICAL {
             for z in 0..CHUNK_SIZE_HORIZONTAL {
@@ -221,21 +221,21 @@ fn chunk_voxels(noise: &FastNoiseLite, chunk_pos: &ChunkPosition) -> Vec<VoxelDa
                     pos_z
                 );
 
-                // determine texture
+                // determine voxel type
                 let dirt_patch = noise.get_noise_2d(global_pos_x, global_pos_z);
                 let dirt_patch = (dirt_patch + 1.0) / 2.0; // convert to 0..1 range (get_noise_2d gives a value in the -1..1 range)
                 
-                let texture = if voxel_position.y <= SEA_LEVEL {
+                let voxel_type = if voxel_position.y <= SEA_LEVEL {
                     voxel_position.y = SEA_LEVEL;
-                    Texture::Water
+                    VoxelType::Water
                 } else if dirt_patch > DIRT_PATCHES_THRESHOLD {
-                    Texture::Dirt
+                    VoxelType::Dirt
                 } else {
-                    Texture::Grass
+                    VoxelType::Grass
                 };
 
                 // add to voxels vec
-                voxels.push(VoxelData::new(voxel_position.as_ivec3(), texture));
+                voxels.push(VoxelData::new(voxel_position.as_ivec3(), voxel_type));
             }
         }
     }
@@ -255,7 +255,7 @@ fn chunk_mesh(voxels: &[VoxelData]) -> Mesh {
         faces.retain(|face| voxel::should_draw_face(face, &voxel.position, voxels));
 
         // merge mesh
-        let mut voxel_mesh = voxel::voxel_mesh(faces, &voxel.texture);
+        let mut voxel_mesh = voxel::voxel_mesh(faces, &voxel.voxel_type);
         voxel_mesh.translate_by(voxel.position.as_vec3());
         
         chunk_mesh.merge(&voxel_mesh).expect("invalid mesh");

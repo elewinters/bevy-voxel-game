@@ -203,18 +203,18 @@ impl Face {
 }
 
 #[derive(Clone, Eq, Hash, PartialEq)]
-pub enum Texture {
+pub enum VoxelType {
     Grass,
     Dirt,
     Water,
 }
 
-impl Texture {
+impl VoxelType {
     fn uv_coords(&self) -> &'static [[f32; 2]] {
         match self {
-            Texture::Grass => &CUBE_VERTEX_UVS_GRASS,
-            Texture::Dirt => &CUBE_VERTEX_UVS_DIRT,
-            Texture::Water => &CUBE_VERTEX_UVS_WATER
+            VoxelType::Grass => &CUBE_VERTEX_UVS_GRASS,
+            VoxelType::Dirt => &CUBE_VERTEX_UVS_DIRT,
+            VoxelType::Water => &CUBE_VERTEX_UVS_WATER
         }
     }
 }
@@ -222,14 +222,14 @@ impl Texture {
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct VoxelData {
     pub position: IVec3,
-    pub texture: Texture
+    pub voxel_type: VoxelType
 }
 
 impl VoxelData {
-    pub fn new(position: IVec3, texture: Texture) -> VoxelData {
+    pub fn new(position: IVec3, voxel_type: VoxelType) -> VoxelData {
         Self {
             position,
-            texture
+            voxel_type
         }
     }
 }
@@ -239,7 +239,7 @@ impl VoxelData {
 /* ------------------ */
 // #tag functions
 
-pub fn voxel_mesh(faces: Vec<Face>, texture: &Texture) -> Mesh {
+pub fn voxel_mesh(faces: Vec<Face>, voxel_type: &VoxelType) -> Mesh {
     // worst case scenario
     let max_vertices = 30;
 
@@ -265,7 +265,7 @@ pub fn voxel_mesh(faces: Vec<Face>, texture: &Texture) -> Mesh {
             let new_idx = *vertex_map.entry(old_idx).or_insert_with(|| {
                 positions.push(CUBE_VERTEX_POSITIONS[old_idx]);
                 normals.push(CUBE_VERTEX_NORMALS[old_idx]);
-                uvs.push(texture.uv_coords()[old_idx]);
+                uvs.push(voxel_type.uv_coords()[old_idx]);
                 
                 let id = next_vertex_id;
                 next_vertex_id += 1;
