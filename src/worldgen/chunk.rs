@@ -48,21 +48,21 @@ const CHUNK_LEN: usize = (CHUNK_SIZE_HORIZONTAL * CHUNK_SIZE_HORIZONTAL) as usiz
 const SEA_LEVEL: f32 = -10.0;
 
 // noise constants
-const FREQUENCY: f32 = 0.02; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
+const FREQUENCY: f32 = 0.03; // essentially the scale of the noise function, lower values zoom in while higher values zoom out
 
-const PLAINS_HEIGHT_VARIATION: f32 = 10.0;
+const PLAINS_HEIGHT_VARIATION: f32 = 5.0;
 const PLAINS_VALLEY_THRESHOLD: f32 = 0.0; // below this value we'll have valleys
 const PLAINS_VALLEY_SMOOTHNESS: f32 = 1.5; // how smooth valleys are
 const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get the lower they are
 
-const HILLS_HEIGHT_VARIATION: f32 = 50.0;
-const HILLS_WAVELENGTH: f32 = 5.0;
+const HILLS_HEIGHT_VARIATION: f32 = 30.0;
+const HILLS_WAVELENGTH: f32 = 6.0;
 
 const MOUNTAINS_HEIGHT_VARIATION: f32 = 800.0;
 
 // bigger values mean less but bigger mountains while smaller values mean more but smaller mountains
 // think of this as a height gradient of sorts
-const MOUNTAINS_WAVELENGTH: f32 = 13.0;
+const MOUNTAINS_WAVELENGTH: f32 = 20.0;
 
 // value from 0.0 to 1.0, if the noise value is above DIRT_PATCHES_THRESHOLD the terrain will be dirt instead of grass
 // lower values mean more dirt, higher values mean more grass
