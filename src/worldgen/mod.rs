@@ -7,8 +7,12 @@ mod voxel;
 pub struct WorldGenPlugin;
 impl Plugin for WorldGenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (spawn_atmosphere, voxel::setup_global_texture));
+        app.add_systems(Startup, spawn_atmosphere);
+
         app.add_plugins(chunk::ChunkPlugin);
+        app.add_plugins(structures::StructuresPlugin);
+
+        app.add_systems(Startup, voxel::setup_global_texture);
     }
 }
 

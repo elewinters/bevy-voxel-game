@@ -10,14 +10,10 @@ use fastnoise_lite::*;
 
 use crate::player;
 use super::voxel::{self, Face, VoxelData, VoxelType, GlobalTexture};
-use super::structures;
 
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        // add structures plugin
-        app.add_plugins(structures::StructuresPlugin);
-        
         // startup plugin
         app.add_systems(Startup, startup);
 
