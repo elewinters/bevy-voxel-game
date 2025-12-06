@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use fastnoise_lite::*;
 
 use crate::player;
-use super::voxel::{self, Face, VoxelData, VoxelType};
+use super::voxel::{self, Face, VoxelData, VoxelType, GlobalTexture};
 use super::structures;
 
 pub struct ChunkPlugin;
@@ -98,9 +98,6 @@ pub struct ChunkMessage {
 /*      resources     */
 /* ------------------ */
 // #tag resources
-
-#[derive(Resource)]
-struct GlobalMaterial(Handle<StandardMaterial>);
 
 #[derive(Resource)]
 struct Noise(Arc<FastNoiseLite>);
@@ -271,8 +268,6 @@ fn chunk_mesh(voxels: &[VoxelData]) -> Mesh {
 
 fn startup(
     mut commands: Commands,
-
-    mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
     // setup noise resource
@@ -280,14 +275,6 @@ fn startup(
     noise.set_frequency(Some(FREQUENCY));
     noise.set_noise_type(Some(NoiseType::Perlin));
     commands.insert_resource(Noise(Arc::new(noise)));
-
-    // setup global material resource
-    let global_material = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("atlas.png")),
-        perceptual_roughness: 1.0,
-        ..default()
-    });
-    commands.insert_resource(GlobalMaterial(global_material));
 
     // setup chunk channel resource
     let (sender, receiver) = crossbeam_channel::unbounded();
@@ -364,7 +351,7 @@ fn handle_chunk_messages(
     channel: Res<ChunkChannel>,
 
     mut meshes: ResMut<Assets<Mesh>>,
-    global_material: Res<GlobalMaterial>,
+    global_texture: Res<GlobalTexture>,
 ) {
     for chunk_data in channel.receiver.try_iter() {
         commands.spawn(ChunkBundle(
@@ -376,7 +363,7 @@ fn handle_chunk_messages(
             chunk_data.transform,
 
             Mesh3d(meshes.add(chunk_data.mesh)),
-            MeshMaterial3d(global_material.0.clone()),
+            MeshMaterial3d(global_texture.0.clone()),
         ));
     }
 }

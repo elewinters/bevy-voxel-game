@@ -235,6 +235,14 @@ impl VoxelData {
 }
 
 /* ------------------ */
+/*      resources     */
+/* ------------------ */
+// #tag resources
+
+#[derive(Resource)]
+pub struct GlobalTexture(pub Handle<StandardMaterial>);
+
+/* ------------------ */
 /*      functions     */
 /* ------------------ */
 // #tag functions
@@ -299,4 +307,24 @@ pub fn should_draw_face(face: &Face, voxel_pos: &IVec3, voxels: &[VoxelData]) ->
     };
     
     !voxels.iter().any(|voxel| voxel.position == neighbor_pos)
+}
+
+/* ---------------- */
+/*      systems     */
+/* ---------------- */
+// #tag systems
+
+// setup global texture resource
+pub fn setup_global_texture(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
+    let global_texture = materials.add(StandardMaterial {
+        base_color_texture: Some(asset_server.load("atlas.png")),
+        perceptual_roughness: 1.0,
+        ..default()
+    });
+
+    commands.insert_resource(GlobalTexture(global_texture));
 }
