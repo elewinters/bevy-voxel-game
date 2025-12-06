@@ -58,6 +58,12 @@ const PLAINS_VALLEY_STEP: f32 = 3.0; // how much smoother the valleys should get
 const HILLS_HEIGHT_VARIATION: f32 = 50.0;
 const HILLS_WAVELENGTH: f32 = 5.0;
 
+const MOUNTAINS_HEIGHT_VARIATION: f32 = 3_000.0;
+
+// bigger values mean less but bigger mountains while smaller values mean more but smaller mountains
+// think of this as a height gradient of sorts
+const MOUNTAINS_WAVELENGTH: f32 = 12.5;
+
 // value from 0.0 to 1.0, if the noise value is above DIRT_PATCHES_THRESHOLD the terrain will be dirt instead of grass
 // lower values mean more dirt, higher values mean more grass
 const DIRT_PATCHES_THRESHOLD: f32 = 0.5; 
@@ -142,6 +148,9 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
     let plains = perlin_noise.get_noise_2d(x, z);
     let hills = perlin_noise.get_noise_2d(x / HILLS_WAVELENGTH, z / HILLS_WAVELENGTH) * HILLS_HEIGHT_VARIATION;
 
+    let mountains = perlin_noise.get_noise_2d(x / MOUNTAINS_WAVELENGTH, z / MOUNTAINS_WAVELENGTH);
+    let mountains = MOUNTAINS_HEIGHT_VARIATION.powf(mountains.abs());
+
     // plains valleys
     let plains = if plains < PLAINS_VALLEY_THRESHOLD {
         // we multiply VALLEY_SMOOTHNESS by (VALLEY_STEP.powf(y) so that the deeper the valley the smoother it is
@@ -152,7 +161,7 @@ fn terrain_noise(perlin_noise: &FastNoiseLite, x: f32, z: f32) -> f32 {
         (plains * PLAINS_HEIGHT_VARIATION).powf(1.1)
     };
 
-    (plains + hills).floor()
+    (plains + hills + mountains).floor()
 }
 
 // round to the nearest chunk (nearest number divisible by CHUNK_SIZE_HORIZONTAL)
