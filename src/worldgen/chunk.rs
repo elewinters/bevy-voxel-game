@@ -14,16 +14,14 @@ use super::voxel::{self, Face, VoxelData, VoxelType, GlobalTexture};
 pub struct ChunkPlugin;
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        // startup plugin
-        app.add_systems(Startup, startup);
+        // resource setup
+        app.add_systems(Startup, setup_resources);
+        app.init_resource::<ExistingChunks>();
 
         // systems responsible for spawning/despawning chunks 
         app.add_systems(Update, send_chunk_messages);
         app.add_systems(Update, handle_chunk_messages);
         app.add_systems(Update, despawn_chunks);
-
-        // resources
-        app.init_resource::<ExistingChunks>();
     }
 }
 /* 
@@ -262,7 +260,7 @@ fn chunk_mesh(voxels: &[VoxelData]) -> Mesh {
 /* ---------------- */
 // #tag systems
 
-fn startup(
+fn setup_resources(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
