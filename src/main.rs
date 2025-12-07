@@ -9,9 +9,18 @@ pub mod window;
 
 /* 
     TODO:
-        - structures (trees, flowers, etc. randomly spawning in the world)
-        - multiple block types
-        - mountains
+        optimize structures by using instancing
+        randomly rotate structures like rocks and sticks to make them look Better 
+        add fog shader
+        add rocks and snow to mountains instead of grass and dirt
+
+        fix holes in steep mountains
+
+        MAYBE:
+            add audio (birds chirping, footsteps, wind, etc..)
+            physics
+            main menu (with graphics options)
+
 */
 
 /* ------------------ */

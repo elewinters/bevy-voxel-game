@@ -25,11 +25,8 @@ impl Plugin for ChunkPlugin {
     }
 }
 /* 
-    TODO:
-        MAYBE:
-        - some simple & fast greedy meshing
-        - LODs (probably not)
-        - speed up chunk generation (optimize compute_chunk_mesh and generate_voxel_mesh)
+    TODO (MAYBE):
+        - some simple greedy meshing (not sure how much it'd help performance given the terrain is mostly pretty hilly but still!)
 */
 
 /* ------------------ */
